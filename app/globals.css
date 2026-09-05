@@ -1,0 +1,98 @@
+@import "tailwindcss";
+
+:root {
+  --color-canvas: #0b0f19;
+  --color-surface: #131b2e;
+  --color-border-subtle: #1e293b;
+  --color-accent: #00d2ff;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-brand-green: #4cae1c;
+  --color-brand-indigo: #2c2a8f;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-canvas);
+  font-feature-settings: "tnum" 1, "cv11" 1;
+}
+
+/* Subtle enterprise backdrop: soft radial glow + faint grid, fixed so it never scrolls with content */
+.app-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(60rem 30rem at 15% -10%, rgba(0, 210, 255, 0.09), transparent 60%),
+    radial-gradient(50rem 26rem at 100% 0%, rgba(76, 174, 28, 0.06), transparent 55%),
+    linear-gradient(var(--color-canvas), var(--color-canvas));
+}
+.app-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(148, 163, 184, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 40%, transparent 90%);
+}
+
+/* Thin, unobtrusive scrollbars for the dense data views */
+.enterprise-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #334155 transparent;
+}
+.enterprise-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.enterprise-scroll::-webkit-scrollbar-thumb {
+  background-color: #334155;
+  border-radius: 9999px;
+}
+.enterprise-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::selection {
+  background: rgba(0, 210, 255, 0.25);
+  color: #fff;
+}
+
+/* Skeleton shimmer used while a scan is in progress */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton-shimmer {
+  background: linear-gradient(
+    100deg,
+    rgba(30, 41, 59, 0.6) 30%,
+    rgba(51, 65, 85, 0.7) 45%,
+    rgba(30, 41, 59, 0.6) 60%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(0, 210, 255, 0.35); }
+  100% { box-shadow: 0 0 0 8px rgba(0, 210, 255, 0); }
+}
+.pulse-ring {
+  animation: pulse-ring 1.8s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
