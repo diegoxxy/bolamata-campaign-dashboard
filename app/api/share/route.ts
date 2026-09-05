@@ -59,7 +59,7 @@ export async function POST(request: Request) {
     const message = err instanceof Error ? err.message : "Gagal membuat share link";
     const isTokenIssue = message.toLowerCase().includes("token") || message.toLowerCase().includes("credentials");
     const hint = isTokenIssue
-      ? " — Blob store sudah di-enable di Vercel, tapi token-nya belum sampai ke environment yang lagi kamu jalankan. Kalau ini localhost/npm run dev: jalankan `vercel env pull .env.local` (atau copy manual BLOB_READ_WRITE_TOKEN dari Vercel dashboard ke .env.local) lalu restart dev server. Kalau ini sudah di domain Vercel asli: cek env var itu ter-centang untuk environment yang sesuai (Production/Preview) di Settings → Environment Variables, lalu redeploy — menambahkan storage tidak otomatis berlaku ke deployment yang sudah ada."
+      ? " — Blob store sudah di-enable di Vercel, tapi token-nya belum sampai ke environment yang lagi kamu jalankan. Kalau ini localhost/npm run dev: jalankan `vercel env pull .env.local` lalu restart dev server. Kalau ini sudah di domain Vercel asli: cek env var ter-centang di Settings → Environment Variables, lalu redeploy."
       : "";
     return NextResponse.json({ error: message + hint }, { status: 500 });
   }

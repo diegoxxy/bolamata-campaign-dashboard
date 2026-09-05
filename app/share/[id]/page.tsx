@@ -1,4 +1,4 @@
-import { get } from "@vercel/blob";
+import { head } from "@vercel/blob";
 import Image from "next/image";
 import Link from "next/link";
 import { AlertTriangle } from "lucide-react";
@@ -8,14 +8,19 @@ import ShareView from "@/components/dashboard/ShareView";
 export const dynamic = "force-dynamic";
 
 async function loadShare(id: string): Promise<SharePayload | null> {
-  // Validasi id sederhana biar tidak asal query ke blob storage.
+  // Validasi id sederhana
   if (!/^[a-f0-9]{6,32}$/i.test(id)) return null;
 
   try {
-    const result = await get(`shares/${id}.json`, { access: "public" });
-    if (!result || !result.stream) return null;
-    const text = await new Response(result.stream).text();
-    return JSON.parse(text) as SharePayload;
+    // Ambil metadata blob publik untuk mendapatkan URL file
+    const blobDetails = await head(`shares/${id}.json`);
+    if (!blobDetails || !blobDetails.url) return null;
+
+    // Fetch konten JSON langsung dari URL publik
+    const res = await fetch(blobDetails.url, { cache: "no-store" });
+    if (!res.ok) return null;
+
+    return (await res.json()) as SharePayload;
   } catch {
     return null;
   }
