@@ -33,17 +33,21 @@ export default function FolderView({ creators, onUpdateVideo, readOnly = false }
   const [editShares, setEditShares] = useState<number>(0);
   const [editSaves, setEditSaves] = useState<number>(0);
 
+  // Helper untuk memastikan username selalu bersih dari prefix '@'
+  const sanitizeUsername = (raw: string) => raw.trim().toLowerCase().replace(/^@+/, "");
+
   // Cari creator group terkini berdasarkan state props `creators`
   const selectedCreator = creators.find(
-    (c) => c.authorName.toLowerCase() === selectedAuthorName?.toLowerCase()
+    (c) => sanitizeUsername(c.authorName) === (selectedAuthorName ? sanitizeUsername(selectedAuthorName) : "")
   );
 
   const handleOpenEdit = (v: VideoItem) => {
     setEditingVideo(v);
+    const cleanAuthor = sanitizeUsername(v.authorName);
     setEditAuthor(
-      v.authorName === "instagram_creator" || v.authorName === "unknown"
+      cleanAuthor === "instagram_creator" || cleanAuthor === "unknown"
         ? ""
-        : v.authorName
+        : cleanAuthor
     );
     setEditViews(v.views || 0);
     setEditLikes(v.likes || 0);
@@ -55,13 +59,14 @@ export default function FolderView({ creators, onUpdateVideo, readOnly = false }
   const handleSaveEdit = () => {
     if (!editingVideo) return;
 
-    const newUsername = editAuthor.trim().toLowerCase().replace(/^@/, "");
-    const finalAuthor = newUsername || editingVideo.authorName;
+    // Perbaikan: Hapus semua prefix '@' secara menyeluruh dari input maupun fallback
+    const rawAuthor = editAuthor.trim() || editingVideo.authorName;
+    const finalAuthor = sanitizeUsername(rawAuthor);
 
     const updated: VideoItem = {
       ...editingVideo,
       authorName: finalAuthor,
-      authorDisplayName: `@${finalAuthor}`,
+      authorDisplayName: `@${finalAuthor}`, // Dijamin selalu tepat 1 '@'
       authorUrl: editingVideo.sourceUrl.includes("instagram.com")
         ? `https://www.instagram.com/${finalAuthor}`
         : editingVideo.authorUrl,
@@ -84,6 +89,7 @@ export default function FolderView({ creators, onUpdateVideo, readOnly = false }
   // Tampilan Dalam Folder
   if (selectedCreator) {
     const creatorAvatar = selectedCreator.videos.find((v) => v.authorAvatar)?.authorAvatar;
+    const cleanCreatorName = sanitizeUsername(selectedCreator.authorName);
 
     return (
       <motion.div
@@ -108,16 +114,16 @@ export default function FolderView({ creators, onUpdateVideo, readOnly = false }
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={creatorAvatar}
-                alt={selectedCreator.authorName}
+                alt={cleanCreatorName}
                 className="w-16 h-16 rounded-full object-cover border border-cyan-800/50"
               />
             ) : (
               <div className="w-16 h-16 rounded-full bg-cyan-950/60 border border-cyan-800/50 flex items-center justify-center text-cyan-400 text-xl font-bold uppercase">
-                @{selectedCreator.authorName.slice(0, 2)}
+                @{cleanCreatorName.slice(0, 2)}
               </div>
             )}
             <div>
-              <h2 className="text-xl font-bold text-white">@{selectedCreator.authorName}</h2>
+              <h2 className="text-xl font-bold text-white">@{cleanCreatorName}</h2>
               <p className="text-xs text-slate-400">Total Link Video: {selectedCreator.videos.length} Video</p>
             </div>
           </div>
@@ -130,72 +136,75 @@ export default function FolderView({ creators, onUpdateVideo, readOnly = false }
           animate="show"
           className="grid grid-cols-1 md:grid-cols-2 gap-4"
         >
-          {selectedCreator.videos.map((v) => (
-            <motion.div
-              key={v.id}
-              variants={gridItem}
-              className="bg-[#111827] border border-[#1e293b] hover:border-slate-700 rounded-xl p-4 flex flex-col justify-between space-y-4 transition-colors"
-            >
-              <div>
-                <div className="flex items-center justify-between">
-                  <StatusBadge status={v.status} />
-                  <span className="text-[11px] font-mono text-cyan-400 font-semibold">
-                    @{v.authorName}
-                  </span>
+          {selectedCreator.videos.map((v) => {
+            const cleanVideoAuthor = sanitizeUsername(v.authorName);
+            return (
+              <motion.div
+                key={v.id}
+                variants={gridItem}
+                className="bg-[#111827] border border-[#1e293b] hover:border-slate-700 rounded-xl p-4 flex flex-col justify-between space-y-4 transition-colors"
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <StatusBadge status={v.status} />
+                    <span className="text-[11px] font-mono text-cyan-400 font-semibold">
+                      @{cleanVideoAuthor}
+                    </span>
+                  </div>
+                  <h4 className="text-xs font-semibold text-slate-200 mt-2 line-clamp-2">
+                    {v.title}
+                  </h4>
+                  <p className="text-[10px] text-slate-500 mt-1 truncate">
+                    {v.sourceUrl}
+                  </p>
                 </div>
-                <h4 className="text-xs font-semibold text-slate-200 mt-2 line-clamp-2">
-                  {v.title}
-                </h4>
-                <p className="text-[10px] text-slate-500 mt-1 truncate">
-                  {v.sourceUrl}
-                </p>
-              </div>
 
-              <div className="grid grid-cols-3 md:grid-cols-5 gap-2 text-[11px] text-slate-300 bg-slate-900/50 p-3 rounded-lg border border-slate-800 text-center">
-                <div>
-                  <span className="block text-[10px] text-slate-500">Views</span>
-                  <strong className="text-amber-400">{(v.views || 0).toLocaleString("id-ID")}</strong>
+                <div className="grid grid-cols-3 md:grid-cols-5 gap-2 text-[11px] text-slate-300 bg-slate-900/50 p-3 rounded-lg border border-slate-800 text-center">
+                  <div>
+                    <span className="block text-[10px] text-slate-500">Views</span>
+                    <strong className="text-amber-400">{(v.views || 0).toLocaleString("id-ID")}</strong>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] text-slate-500">Likes</span>
+                    <strong className="text-rose-400">{(v.likes || 0).toLocaleString("id-ID")}</strong>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] text-slate-500">Comments</span>
+                    <strong className="text-cyan-400">{(v.comments || 0).toLocaleString("id-ID")}</strong>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] text-slate-500">Shares</span>
+                    <strong className="text-emerald-400">{(v.shares || 0).toLocaleString("id-ID")}</strong>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] text-slate-500">Saves</span>
+                    <strong className="text-purple-400">{(v.saves || 0).toLocaleString("id-ID")}</strong>
+                  </div>
                 </div>
-                <div>
-                  <span className="block text-[10px] text-slate-500">Likes</span>
-                  <strong className="text-rose-400">{(v.likes || 0).toLocaleString("id-ID")}</strong>
-                </div>
-                <div>
-                  <span className="block text-[10px] text-slate-500">Comments</span>
-                  <strong className="text-cyan-400">{(v.comments || 0).toLocaleString("id-ID")}</strong>
-                </div>
-                <div>
-                  <span className="block text-[10px] text-slate-500">Shares</span>
-                  <strong className="text-emerald-400">{(v.shares || 0).toLocaleString("id-ID")}</strong>
-                </div>
-                <div>
-                  <span className="block text-[10px] text-slate-500">Saves</span>
-                  <strong className="text-purple-400">{(v.saves || 0).toLocaleString("id-ID")}</strong>
-                </div>
-              </div>
 
-              <div className="flex items-center gap-2">
-                <a
-                  href={v.sourceUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-center rounded-lg text-xs font-medium transition-colors inline-flex items-center justify-center gap-1.5"
-                >
-                  Buka Link Asli <ExternalLink className="w-3 h-3" />
-                </a>
-                {!readOnly && (
-                  <motion.button
-                    whileHover={{ y: -1 }}
-                    whileTap={{ scale: 0.96 }}
-                    onClick={() => handleOpenEdit(v)}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 border border-amber-500/30 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                <div className="flex items-center gap-2">
+                  <a
+                    href={v.sourceUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-center rounded-lg text-xs font-medium transition-colors inline-flex items-center justify-center gap-1.5"
                   >
-                    <Pencil className="w-3.5 h-3.5" /> Edit Data
-                  </motion.button>
-                )}
-              </div>
-            </motion.div>
-          ))}
+                    Buka Link Asli <ExternalLink className="w-3 h-3" />
+                  </a>
+                  {!readOnly && (
+                    <motion.button
+                      whileHover={{ y: -1 }}
+                      whileTap={{ scale: 0.96 }}
+                      onClick={() => handleOpenEdit(v)}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 border border-amber-500/30 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                    >
+                      <Pencil className="w-3.5 h-3.5" /> Edit Data
+                    </motion.button>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
         </motion.div>
 
         {/* Modal Edit */}
@@ -330,7 +339,8 @@ export default function FolderView({ creators, onUpdateVideo, readOnly = false }
     >
       {creators.map((c) => {
         const avatarUrl = c.videos.find((v) => v.authorAvatar)?.authorAvatar;
-        const isUnknown = c.authorName.toLowerCase() === "unknown";
+        const cleanName = sanitizeUsername(c.authorName);
+        const isUnknown = cleanName === "unknown";
 
         return (
           <motion.div
@@ -338,7 +348,7 @@ export default function FolderView({ creators, onUpdateVideo, readOnly = false }
             variants={gridItem}
             whileHover={{ y: -3 }}
             whileTap={{ scale: 0.99 }}
-            onClick={() => setSelectedAuthorName(c.authorName)}
+            onClick={() => setSelectedAuthorName(cleanName)}
             className={`relative overflow-hidden p-5 rounded-xl cursor-pointer transition-colors ${
               isUnknown
                 ? "bg-amber-950/10 border border-amber-900/40 hover:border-amber-700/60"
@@ -361,17 +371,17 @@ export default function FolderView({ creators, onUpdateVideo, readOnly = false }
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={avatarUrl}
-                    alt={c.authorName}
+                    alt={cleanName}
                     className="w-11 h-11 rounded-full object-cover border border-cyan-800 flex-shrink-0"
                   />
                 ) : (
                   <div className="w-11 h-11 rounded-full bg-cyan-950 border border-cyan-800 flex items-center justify-center text-cyan-400 font-bold text-sm uppercase flex-shrink-0">
-                    {c.authorName.slice(0, 2)}
+                    {cleanName.slice(0, 2)}
                   </div>
                 )}
                 <div className="min-w-0">
                   <h3 className={`text-sm font-bold truncate ${isUnknown ? "text-amber-300" : "text-white"}`}>
-                    {isUnknown ? "Link Error / Unknown" : `@${c.authorName}`}
+                    {isUnknown ? "Link Error / Unknown" : `@${cleanName}`}
                   </h3>
                   <p className="text-[10px] text-slate-500">{c.videoCount} video link</p>
                 </div>
