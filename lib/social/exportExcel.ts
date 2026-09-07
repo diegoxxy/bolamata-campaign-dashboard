@@ -10,6 +10,15 @@ const STATUS_LABEL: Record<string, string> = {
   error: "Error/Private",
 };
 
+/**
+ * Memastikan username diawali tepat satu '@'
+ */
+function formatUsername(name: string): string {
+  if (!name) return "-";
+  const clean = name.replace(/^@+/, "");
+  return `@${clean}`;
+}
+
 export function exportResultToExcel(result: AnalysisResult, fileNamePrefix = "campaign-report") {
   const wb = XLSX.utils.book_new();
 
@@ -29,8 +38,8 @@ export function exportResultToExcel(result: AnalysisResult, fileNamePrefix = "ca
     ["Total Shares", formatFullNumber(m.totalShares)],
     ["Total Saves", formatFullNumber(m.totalSaves)],
     ["Total Kreator", m.totalCreators],
-    ["Top Creator", m.topCreator ? `@${m.topCreator.authorName} (${formatFullNumber(m.topCreator.totalViews)} views)` : "-"],
-    ["Top Video", m.topVideo ? `${m.topVideo.title} — @${m.topVideo.authorName} (${formatFullNumber(m.topVideo.views)} views)` : "-"],
+    ["Top Creator", m.topCreator ? `${formatUsername(m.topCreator.authorName)} (${formatFullNumber(m.topCreator.totalViews)} views)` : "-"],
+    ["Top Video", m.topVideo ? `${m.topVideo.title} — ${formatUsername(m.topVideo.authorName)} (${formatFullNumber(m.topVideo.views)} views)` : "-"],
   ];
   const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows);
   summarySheet["!cols"] = [{ wch: 22 }, { wch: 50 }];
@@ -40,7 +49,7 @@ export function exportResultToExcel(result: AnalysisResult, fileNamePrefix = "ca
   const creatorRows = [
     ["Username", "Total Video", "Video Qualified", "Total Views", "Total Likes", "Total Comments", "Total Shares", "Total Saves", "Total Engagement", "Profile URL"],
     ...result.creators.map((c) => [
-      `@${c.authorName}`,
+      formatUsername(c.authorName),
       c.videoCount,
       c.qualifiedCount,
       c.totalViews,
@@ -62,7 +71,7 @@ export function exportResultToExcel(result: AnalysisResult, fileNamePrefix = "ca
     ...result.allVideos.map((v) => [
       v.platform ? v.platform.toUpperCase() : "TIKTOK",
       v.postedAt || "-",
-      `@${v.authorName}`,
+      formatUsername(v.authorName),
       v.title,
       STATUS_LABEL[v.status] ?? v.status,
       v.views,

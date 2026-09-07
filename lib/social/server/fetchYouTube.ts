@@ -6,6 +6,36 @@ function extractYouTubeId(url: string): string | null {
   return match && match[2].length === 11 ? match[2] : null;
 }
 
+/**
+ * Format string author agar selalu diawali dengan 1 simbol '@' saja
+ */
+function normalizeAuthorHandle(rawAuthor: string): string {
+  const clean = rawAuthor.replace(/\s+/g, "").toLowerCase();
+  const withAt = clean.startsWith("@") ? clean : `@${clean}`;
+  return withAt.replace(/^@+/, "@");
+}
+
+/**
+ * Format string tanggal (ISO string atau timestamp) ke DD/MM/YYYY
+ */
+function formatDateToID(dateStrOrTimestamp: string | number): string {
+  try {
+    const dateObj = typeof dateStrOrTimestamp === "number" 
+      ? new Date(dateStrOrTimestamp * 1000) 
+      : new Date(dateStrOrTimestamp);
+
+    if (isNaN(dateObj.getTime())) return "-";
+
+    return dateObj.toLocaleDateString("id-ID", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  } catch {
+    return "-";
+  }
+}
+
 export async function fetchYouTubeData(
   resolvedUrl: string,
   cleanHashtag: string
@@ -29,17 +59,11 @@ export async function fetchYouTubeData(
 
       let formattedDate = "-";
       if (data.published) {
-        const dateObj = new Date(data.published * 1000);
-        formattedDate = dateObj.toLocaleDateString("id-ID", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        });
+        formattedDate = formatDateToID(data.published);
       }
 
       const rawAuthor = data.author || "unknown";
-      const cleanAuthor = rawAuthor.replace(/\s+/g, "").toLowerCase();
-      const formattedAuthor = cleanAuthor.startsWith("@") ? cleanAuthor : `@${cleanAuthor}`;
+      const formattedAuthor = normalizeAuthorHandle(rawAuthor);
 
       return {
         id: videoId,
@@ -58,7 +82,7 @@ export async function fetchYouTubeData(
         shares: 0,
         saves: 0,
         postedAt: formattedDate,
-        status: "qualified", // Otomatis diset QUALIFIED
+        status: "qualified",
       };
     }
   } catch {
@@ -76,11 +100,11 @@ export async function fetchYouTubeData(
 
     const oembedData = await res.json();
     const rawAuthor = oembedData.author_name || "youtube_creator";
-    const cleanAuthor = rawAuthor.replace(/\s+/g, "").toLowerCase();
-    const formattedAuthor = cleanAuthor.startsWith("@") ? cleanAuthor : `@${cleanAuthor}`;
+    const formattedAuthor = normalizeAuthorHandle(rawAuthor);
 
     let views = 0;
     let likes = 0;
+    let postedAt = "-";
 
     try {
       const pageRes = await fetch(embedUrl, {
@@ -95,6 +119,7 @@ export async function fetchYouTubeData(
       if (pageRes.ok) {
         const html = await pageRes.text();
 
+        // Parse View Count
         const viewMatch =
           html.match(/"viewCount":"(\d+)"/) ||
           html.match(/itemprop="interactionCount" content="(\d+)"/) ||
@@ -104,12 +129,23 @@ export async function fetchYouTubeData(
           views = parseInt(viewMatch[1].replace(/[^\d]/g, ""), 10) || 0;
         }
 
+        // Parse Like Count
         const likeMatch =
           html.match(/"label":"([\d,\.]+)\s+likes"/i) ||
           html.match(/"likeCount":"(\d+)"/);
 
         if (likeMatch) {
           likes = parseInt(likeMatch[1].replace(/[^\d]/g, ""), 10) || 0;
+        }
+
+        // Parse Upload / Publish Date dari HTML meta tags
+        const dateMatch =
+          html.match(/itemprop="uploadDate" content="([^"]+)"/) ||
+          html.match(/itemprop="datePublished" content="([^"]+)"/) ||
+          html.match(/"uploadDate":"([^"]+)"/);
+
+        if (dateMatch && dateMatch[1]) {
+          postedAt = formatDateToID(dateMatch[1]);
         }
       }
     } catch {
@@ -132,8 +168,8 @@ export async function fetchYouTubeData(
       comments: 0,
       shares: 0,
       saves: 0,
-      postedAt: "-",
-      status: "qualified", // Otomatis diset QUALIFIED
+      postedAt: postedAt,
+      status: "qualified",
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Gagal mengambil data YouTube";

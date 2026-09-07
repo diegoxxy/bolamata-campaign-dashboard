@@ -2,6 +2,15 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import type { AnalysisResult } from "./types";
 
+/**
+ * Memastikan username diawali tepat satu '@'
+ */
+function formatUsername(name: string): string {
+  if (!name) return "-";
+  const clean = name.replace(/^@+/, "");
+  return `@${clean}`;
+}
+
 export function exportResultToPdf(result: AnalysisResult) {
   const doc = new jsPDF();
   const currentDate = new Date().toLocaleString("id-ID");
@@ -29,8 +38,8 @@ export function exportResultToPdf(result: AnalysisResult) {
     ["Total Shares", globalMetrics.totalShares.toLocaleString("id-ID")],
     ["Total Saves", globalMetrics.totalSaves.toLocaleString("id-ID")],
     ["Total Kreator Terlibat", globalMetrics.totalCreators.toString()],
-    ["Top Creator", globalMetrics.topCreator ? `@${globalMetrics.topCreator.authorName} (${globalMetrics.topCreator.totalViews.toLocaleString("id-ID")} views)` : "-"],
-    ["Top Video", globalMetrics.topVideo ? `${globalMetrics.topVideo.authorName} (${globalMetrics.topVideo.views.toLocaleString("id-ID")} views)` : "-"],
+    ["Top Creator", globalMetrics.topCreator ? `${formatUsername(globalMetrics.topCreator.authorName)} (${globalMetrics.topCreator.totalViews.toLocaleString("id-ID")} views)` : "-"],
+    ["Top Video", globalMetrics.topVideo ? `${formatUsername(globalMetrics.topVideo.authorName)} (${globalMetrics.topVideo.views.toLocaleString("id-ID")} views)` : "-"],
   ];
 
   autoTable(doc, {
@@ -51,7 +60,7 @@ export function exportResultToPdf(result: AnalysisResult) {
     startY: currentY + 4,
     head: [["Username", "Video Upload", "Total Views", "Total Likes", "Total Comments", "Total Engagement"]],
     body: creators.map((c) => [
-      `@${c.authorName}`,
+      formatUsername(c.authorName),
       c.videos.length,
       c.totalViews.toLocaleString("id-ID"),
       c.totalLikes.toLocaleString("id-ID"),
@@ -74,7 +83,7 @@ export function exportResultToPdf(result: AnalysisResult) {
     body: allVideos.map((v) => [
       v.platform ? v.platform.toUpperCase() : "TIKTOK",
       v.postedAt || "-",
-      `@${v.authorName}`,
+      formatUsername(v.authorName),
       v.status.toUpperCase(),
       v.views.toLocaleString("id-ID"),
       (v.likes || 0).toLocaleString("id-ID"),
