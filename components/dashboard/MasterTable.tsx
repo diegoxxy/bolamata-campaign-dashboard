@@ -53,6 +53,10 @@ export default function MasterTable({ videos }: { videos: VideoItem[] }) {
         <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
           {items.map((vRow) => {
             const vid = videos[vRow.index];
+            
+            // Perbaikan: Bersihkan prefix '@' agar tidak bertumpuk
+            const cleanAuthor = vid.authorName ? vid.authorName.replace(/^@+/, "") : "unknown";
+
             return (
               <div
                 key={vid.id + vRow.index}
@@ -97,14 +101,14 @@ export default function MasterTable({ videos }: { videos: VideoItem[] }) {
                   {vid.title || <span className="italic text-slate-600">(tanpa caption)</span>}
                 </p>
 
-                {/* Username */}
+                {/* Username - Perbaikan `@` Ganda */}
                 <a
                   href={vid.authorUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="text-xs font-medium text-cyan-400 hover:underline truncate"
                 >
-                  @{vid.authorName}
+                  @{cleanAuthor}
                 </a>
 
                 {/* Views */}
