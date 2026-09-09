@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "motion/react";
-import { FolderSearch, RotateCcw, Share2, Loader2 } from "lucide-react";
+import { FolderSearch, RotateCcw, Share2, Loader2, Instagram, MessageSquare } from "lucide-react";
 import type { VideoBatchResponse, VideoItem } from "@/lib/social/types";
 import { chunkArray } from "@/lib/social/chunk";
 import { setManyInCache } from "@/lib/social/cache";
@@ -247,8 +247,8 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen text-slate-100 p-4 md:p-8 font-sans">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <main className="min-h-screen text-slate-100 p-4 md:p-8 font-sans flex flex-col justify-between">
+      <div className="max-w-7xl mx-auto space-y-6 w-full">
         <motion.header
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -395,6 +395,31 @@ export default function Home() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Footer Komponen */}
+      <footer className="max-w-7xl mx-auto w-full mt-12 pt-6 border-t border-[#1e293b] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
+        <p>© 2026 BolaMata Currency. All rights reserved.</p>
+        <div className="flex items-center gap-4">
+          <a
+            href="https://www.instagram.com/bolamatacurrency/"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 hover:text-pink-400 transition-colors"
+          >
+            <Instagram className="w-4 h-4" />
+            <span>Instagram</span>
+          </a>
+          <a
+            href="https://discord.gg/bolamatacurrency"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 hover:text-indigo-400 transition-colors"
+          >
+            <MessageSquare className="w-4 h-4" />
+            <span>Discord</span>
+          </a>
+        </div>
+      </footer>
 
       <ShareModal url={shareUrl} onClose={() => setShareUrl(null)} />
       <ToastStack toasts={toasts} onDismiss={dismiss} />
