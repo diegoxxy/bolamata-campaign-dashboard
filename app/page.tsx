@@ -248,70 +248,73 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen text-slate-100 p-4 md:p-8 font-sans flex flex-col justify-between">
-      <div className="max-w-7xl mx-auto space-y-6 w-full">
+    <main className="min-h-screen text-slate-100 p-3 sm:p-6 md:p-8 font-sans flex flex-col justify-between overflow-x-hidden">
+      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 w-full">
+        {/* Header Layout Responsif */}
         <motion.header
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-          className="border-b border-[#1e293b] pb-6 flex flex-col md:flex-row md:items-center justify-between gap-5"
+          className="border-b border-[#1e293b] pb-4 sm:pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-5"
         >
-          <div className="flex items-center gap-4">
-            <div className="bg-white rounded-xl px-3.5 py-3 shadow-lg shadow-black/30 flex-shrink-0">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+            <div className="bg-white rounded-xl px-3 py-2.5 sm:px-3.5 sm:py-3 shadow-lg shadow-black/30 flex-shrink-0">
               <Image
                 src="/logo-bolamata.png"
                 alt="Bola Mata Currency Clippers Agency"
                 width={1048}
                 height={136}
                 priority
-                className="h-6 sm:h-7 w-auto"
+                className="h-5 sm:h-7 w-auto object-contain"
               />
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider mb-1 text-cyan-400">
+              <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs font-semibold uppercase tracking-wider mb-0.5 sm:mb-1 text-cyan-400">
                 <span className="relative flex h-2 w-2 flex-shrink-0">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400" />
                 </span>
-                BolaMata Currency Clippers Agency
+                <span className="truncate">BolaMata Currency Clippers Agency</span>
               </div>
-              <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-white">
                 Campaign Analytics Dashboard
               </h1>
-              <p className="text-sm text-slate-400 mt-1">
+              <p className="text-xs sm:text-sm text-slate-400 mt-1 leading-relaxed">
                 Verifikasi, agregasi, dan analisis performa kampanye TikTok, YouTube &amp; Instagram.
               </p>
             </div>
           </div>
+
           <AnimatePresence>
             {hasResult && (
               <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
+                initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className="flex items-center gap-2 self-start md:self-auto"
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="flex items-center gap-2 w-full md:w-auto pt-2 md:pt-0"
               >
                 <motion.button
                   whileHover={{ y: -1 }}
                   whileTap={{ scale: 0.96 }}
                   onClick={handleShare}
                   disabled={sharing}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-700 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                  className="flex-1 md:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 md:px-4 md:py-2 bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-700 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer"
                 >
                   {sharing ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   ) : (
                     <Share2 className="w-3.5 h-3.5" />
                   )}
-                  Share Hasil
+                  <span>Share Hasil</span>
                 </motion.button>
                 <motion.button
                   whileHover={{ y: -1 }}
                   whileTap={{ scale: 0.96 }}
                   onClick={handleReset}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-rose-600/20 text-rose-400 hover:bg-rose-600/30 border border-rose-500/30 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                  className="flex-1 md:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 md:px-4 md:py-2 bg-rose-600/20 text-rose-400 hover:bg-rose-600/30 border border-rose-500/30 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
                 >
-                  <RotateCcw className="w-3.5 h-3.5" /> Reset / Analisis Baru
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Reset</span>
                 </motion.button>
               </motion.div>
             )}
@@ -342,9 +345,9 @@ export default function Home() {
               className="overflow-hidden"
             >
               <div className="text-xs text-cyan-300 bg-cyan-950/30 border border-cyan-800/50 p-3 rounded-lg space-y-2">
-                <div className="flex justify-between items-center">
-                  <span>Memproses analisis link...</span>
-                  <span className="font-mono font-bold">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="truncate pr-2">Memproses analisis link...</span>
+                  <span className="font-mono font-bold whitespace-nowrap">
                     {progress.done} / {progress.total} link
                   </span>
                 </div>
@@ -381,13 +384,13 @@ export default function Home() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.1 }}
-                className="border border-dashed border-[#1e293b] rounded-2xl py-16 px-6 text-center bg-[#0f1524]/40"
+                className="border border-dashed border-[#1e293b] rounded-2xl py-12 sm:py-16 px-4 sm:px-6 text-center bg-[#0f1524]/40"
               >
-                <div className="mx-auto w-12 h-12 rounded-full bg-cyan-950/40 border border-cyan-900/50 flex items-center justify-center mb-4">
-                  <FolderSearch className="w-5 h-5 text-cyan-400" />
+                <div className="mx-auto w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-cyan-950/40 border border-cyan-900/50 flex items-center justify-center mb-3 sm:mb-4">
+                  <FolderSearch className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
                 </div>
-                <h3 className="text-sm font-semibold text-slate-200">Belum ada data kampanye</h3>
-                <p className="text-xs text-slate-500 mt-1.5 max-w-sm mx-auto">
+                <h3 className="text-xs sm:text-sm font-semibold text-slate-200">Belum ada data kampanye</h3>
+                <p className="text-[11px] sm:text-xs text-slate-500 mt-1.5 max-w-sm mx-auto leading-relaxed">
                   Isi hashtag kampanye dan tempel link TikTok, YouTube, atau Instagram di atas — atau import
                   dari Excel/CSV — lalu klik <span className="text-cyan-400 font-medium">Verifikasi &amp; Kelompokkan</span>.
                 </p>
