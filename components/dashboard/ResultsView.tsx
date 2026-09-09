@@ -70,23 +70,52 @@ export default function ResultsView({
     return validCreators;
   }, [filteredVideos, creatorSort]);
 
-  const manualCount = useMemo(
-    () =>
-      allVideos.filter(
-        (v) => v.authorName.toLowerCase() === "instagram_creator" || v.views === 0
-      ).length,
-    [allVideos]
-  );
+  // Perbaikan: Kelompokkan link yang membutuhkan input manual/error berdasarkan platform aslinya
+  const issueSummary = useMemo(() => {
+    const problematic = allVideos.filter(
+      (v) =>
+        v.authorName.toLowerCase() === "instagram_creator" ||
+        v.authorName.toLowerCase() === "unknown" ||
+        v.views === 0
+    );
+
+    if (problematic.length === 0) return null;
+
+    const counts = {
+      instagram: 0,
+      tiktok: 0,
+      youtube: 0,
+    };
+
+    problematic.forEach((v) => {
+      if (v.platform === "instagram" || v.sourceUrl.includes("instagram.com")) {
+        counts.instagram++;
+      } else if (v.platform === "youtube" || v.sourceUrl.includes("youtube.com") || v.sourceUrl.includes("youtu.be")) {
+        counts.youtube++;
+      } else {
+        counts.tiktok++;
+      }
+    });
+
+    const parts: string[] = [];
+    if (counts.tiktok > 0) parts.push(`${counts.tiktok} link TikTok`);
+    if (counts.instagram > 0) parts.push(`${counts.instagram} link Instagram`);
+    if (counts.youtube > 0) parts.push(`${counts.youtube} link YouTube`);
+
+    return {
+      total: problematic.length,
+      detailText: parts.join(", "),
+    };
+  }, [allVideos]);
 
   return (
     <div className="space-y-6">
-      {manualCount > 0 && (
-        <div className="p-4 rounded-xl bg-cyan-950/30 border border-cyan-800/40 text-cyan-300 text-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+      {/* Perbaikan Catatan Banner: Tampilan Dinamis Sesuai Platform Error */}
+      {issueSummary && (
+        <div className="p-4 rounded-xl bg-amber-950/20 border border-amber-800/40 text-amber-300 text-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
-            <strong className="font-semibold text-cyan-200">Catatan Instagram:</strong> Ditemukan{" "}
-            <span className="font-bold underline">{manualCount} link Instagram</span> yang terkena
-            proteksi scraping publik. Anda dapat mengeklik link asli untuk mengecek views/likes manual
-            jika diperlukan.
+            <strong className="font-semibold text-amber-200">Catatan Verifikasi Link:</strong> Ditemukan{" "}
+            <span className="font-bold underline">{issueSummary.detailText}</span> yang bermasalah, privat, atau terkena proteksi scraping. Anda dapat mengeklik link asli untuk mengecek data manual jika diperlukan.
           </div>
         </div>
       )}
