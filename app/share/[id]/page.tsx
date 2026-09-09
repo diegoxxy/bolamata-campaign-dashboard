@@ -4,6 +4,7 @@ import Link from "next/link";
 import { AlertTriangle } from "lucide-react";
 import type { SharePayload } from "@/lib/social/types";
 import ShareView from "@/components/dashboard/ShareView";
+import { Footer } from "@/components/dashboard/SocialIcons";
 
 export const dynamic = "force-dynamic";
 
@@ -28,8 +29,8 @@ async function loadShare(id: string): Promise<SharePayload | null> {
 
 function NotFoundView() {
   return (
-    <main className="min-h-screen text-slate-100 p-4 md:p-8 font-sans flex items-center justify-center">
-      <div className="max-w-md w-full text-center space-y-4">
+    <main className="min-h-screen text-slate-100 p-4 md:p-8 font-sans flex flex-col justify-between items-center">
+      <div className="max-w-md w-full text-center space-y-4 my-auto">
         <div className="bg-white rounded-xl px-3.5 py-3 shadow-lg shadow-black/30 inline-block">
           <Image
             src="/logo-bolamata.png"
@@ -54,6 +55,8 @@ function NotFoundView() {
           Ke Halaman Utama
         </Link>
       </div>
+
+      <Footer />
     </main>
   );
 }
