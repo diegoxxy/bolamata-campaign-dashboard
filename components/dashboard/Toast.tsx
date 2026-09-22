@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { CheckCircle2, AlertCircle, X } from "lucide-react";
+import { toastSpring, pressable } from "./motionPresets";
 
 export interface ToastItem {
   id: number;
@@ -41,35 +42,45 @@ export function useToast() {
 
 export function ToastStack({ toasts, onDismiss }: { toasts: ToastItem[]; onDismiss: (id: number) => void }) {
   return (
-    <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 w-[calc(100%-2rem)] max-w-sm">
+    <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2.5 w-[calc(100%-2rem)] max-w-sm">
       <AnimatePresence>
         {toasts.map((t) => (
           <motion.div
             key={t.id}
-            initial={{ opacity: 0, y: 16, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, x: 40, transition: { duration: 0.2 } }}
-            transition={{ type: "spring", stiffness: 400, damping: 32 }}
-            className={`flex items-start gap-2.5 rounded-xl border p-3.5 shadow-xl backdrop-blur-sm ${
+            variants={toastSpring}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            layout
+            className={`relative flex items-start gap-3 rounded-xl border p-3.5 shadow-xl backdrop-blur-md overflow-hidden ${
               t.variant === "success"
                 ? "bg-emerald-950/90 border-emerald-800/60 text-emerald-200"
                 : "bg-red-950/90 border-red-800/60 text-red-200"
             }`}
           >
-            {t.variant === "success" ? (
-              <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0 text-emerald-400" />
-            ) : (
-              <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0 text-red-400" />
-            )}
-            <p className="text-xs leading-relaxed flex-1">{t.message}</p>
-            <button
+            <span
+              aria-hidden
+              className={`absolute left-0 top-0 h-full w-0.5 ${
+                t.variant === "success" ? "bg-emerald-400" : "bg-red-400"
+              }`}
+            />
+            <span className="icon-chip w-6 h-6 bg-white/5 border-white/10 text-current flex-shrink-0 mt-0.5">
+              {t.variant === "success" ? (
+                <CheckCircle2 className="w-4.5 h-4.5" />
+              ) : (
+                <AlertCircle className="w-4.5 h-4.5" />
+              )}
+            </span>
+            <p className="text-sm leading-relaxed flex-1">{t.message}</p>
+            <motion.button
               type="button"
               onClick={() => onDismiss(t.id)}
+              {...pressable}
               className="text-current opacity-60 hover:opacity-100 transition-opacity cursor-pointer flex-shrink-0"
               aria-label="Tutup notifikasi"
             >
-              <X className="w-3.5 h-3.5" />
-            </button>
+              <X className="w-4.5 h-4.5" />
+            </motion.button>
           </motion.div>
         ))}
       </AnimatePresence>

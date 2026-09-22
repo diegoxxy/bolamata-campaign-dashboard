@@ -5,10 +5,17 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { motion } from "motion/react";
 import type { VideoItem } from "@/lib/social/types";
 import { formatFullNumber } from "@/lib/social/format";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, FolderSearch } from "lucide-react";
 import StatusBadge from "./StatusBadge";
+import { reveal, SPRING } from "./motionPresets";
 
-const ROW_HEIGHT = 64;
+const ROW_HEIGHT = 68;
+
+const PLATFORM_BADGE: Record<VideoItem["platform"], string> = {
+  youtube: "bg-red-500/10 text-red-400 border-red-500/25",
+  instagram: "bg-pink-500/10 text-pink-400 border-pink-500/25",
+  tiktok: "bg-cyan-500/10 text-cyan-400 border-cyan-500/25",
+};
 
 export default function MasterTable({ videos }: { videos: VideoItem[] }) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -22,8 +29,14 @@ export default function MasterTable({ videos }: { videos: VideoItem[] }) {
 
   if (videos.length === 0) {
     return (
-      <div className="bg-[#131b2e] border border-[#1e293b] rounded-xl p-10 text-center text-slate-400">
-        Tidak ada video yang cocok dengan filter saat ini.
+      <div className="card p-10 sm:p-14 text-center">
+        <div className="mx-auto w-12 h-12 rounded-full bg-cyan-950/40 border border-cyan-900/50 flex items-center justify-center mb-4 float-soft">
+          <FolderSearch className="w-5 h-5 text-cyan-400" />
+        </div>
+        <h3 className="text-base font-semibold text-white">Tidak ada video yang cocok</h3>
+        <p className="text-sm text-fg-muted mt-1.5 max-w-sm mx-auto leading-relaxed">
+          Coba ubah filter status, naikkan minimum views, atau kosongkan kolom pencarian.
+        </p>
       </div>
     );
   }
@@ -32,13 +45,13 @@ export default function MasterTable({ videos }: { videos: VideoItem[] }) {
 
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
-      className="bg-[#131b2e] border border-[#1e293b] rounded-xl overflow-hidden"
+      variants={reveal}
+      initial="hidden"
+      animate="show"
+      className="card overflow-hidden"
     >
       {/* Header */}
-      <div className="grid grid-cols-[56px_90px_1fr_140px_110px_120px_90px] gap-3 px-4 py-2.5 border-b border-[#1e293b] text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+      <div className="surface-raised grid grid-cols-[56px_96px_minmax(0,2fr)_minmax(0,1.2fr)_112px_128px_88px] gap-3 px-4 py-3.5 border-b border-border-strong text-sm font-bold text-fg-muted uppercase tracking-wider">
         <span>Cover</span>
         <span>Platform</span>
         <span>Caption</span>
@@ -53,7 +66,7 @@ export default function MasterTable({ videos }: { videos: VideoItem[] }) {
         <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
           {items.map((vRow) => {
             const vid = videos[vRow.index];
-            
+
             // Perbaikan: Bersihkan prefix '@' agar tidak bertumpuk
             const cleanAuthor = vid.authorName ? vid.authorName.replace(/^@+/, "") : "unknown";
 
@@ -68,9 +81,13 @@ export default function MasterTable({ videos }: { videos: VideoItem[] }) {
                   height: ROW_HEIGHT,
                   transform: `translateY(${vRow.start}px)`,
                 }}
-                className="group relative grid grid-cols-[56px_90px_1fr_140px_110px_120px_90px] gap-3 px-4 items-center border-b border-slate-800/60 hover:bg-slate-800/20 transition-colors"
+                className="group relative grid grid-cols-[56px_96px_minmax(0,2fr)_minmax(0,1.2fr)_112px_128px_88px] gap-3 px-4 items-center border-b border-border-subtle hover:bg-slate-800/25 transition-colors"
               >
-                <span className="absolute left-0 top-0 h-full w-0.5 bg-cyan-500 scale-y-0 group-hover:scale-y-100 transition-transform origin-center" />
+                <motion.span
+                  className="absolute left-0 top-0 h-full w-0.5 bg-cyan-500 origin-center"
+                  initial={{ scaleY: 0 }}
+                  whileHover={{ scaleY: 1, transition: SPRING.snappy }}
+                />
                 {/* Cover Image */}
                 {vid.coverUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -81,24 +98,16 @@ export default function MasterTable({ videos }: { videos: VideoItem[] }) {
 
                 {/* Platform Badge */}
                 <div>
-                  {vid.platform === "youtube" ? (
-                    <span className="inline-block rounded bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-400 border border-red-500/20">
-                      YouTube
-                    </span>
-                  ) : vid.platform === "instagram" ? (
-                    <span className="inline-block rounded bg-pink-500/10 px-2 py-0.5 text-[10px] font-medium text-pink-400 border border-pink-500/20">
-                      Instagram
-                    </span>
-                  ) : (
-                    <span className="inline-block rounded bg-cyan-500/10 px-2 py-0.5 text-[10px] font-medium text-cyan-400 border border-cyan-500/20">
-                      TikTok
-                    </span>
-                  )}
+                  <span
+                    className={`inline-block rounded-md px-2 py-0.5 text-sm font-medium border ${PLATFORM_BADGE[vid.platform]}`}
+                  >
+                    {vid.platform === "youtube" ? "YouTube" : vid.platform === "instagram" ? "Instagram" : "TikTok"}
+                  </span>
                 </div>
 
                 {/* Caption */}
-                <p className="text-xs text-slate-300 line-clamp-2 leading-snug min-w-0">
-                  {vid.title || <span className="italic text-slate-600">(tanpa caption)</span>}
+                <p className="text-sm text-fg-muted line-clamp-2 leading-snug min-w-0">
+                  {vid.title || <span className="italic text-fg-subtle">(tanpa caption)</span>}
                 </p>
 
                 {/* Username - Perbaikan `@` Ganda */}
@@ -106,13 +115,13 @@ export default function MasterTable({ videos }: { videos: VideoItem[] }) {
                   href={vid.authorUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-xs font-medium text-cyan-400 hover:underline truncate"
+                  className="text-sm font-medium text-cyan-400 hover:underline truncate"
                 >
                   @{cleanAuthor}
                 </a>
 
                 {/* Views */}
-                <span className="text-xs font-semibold text-amber-400 text-right">
+                <span className="text-sm font-semibold text-amber-400 text-right tabular-nums">
                   {formatFullNumber(vid.views)}
                 </span>
 
@@ -122,14 +131,16 @@ export default function MasterTable({ videos }: { videos: VideoItem[] }) {
                 </span>
 
                 {/* Link */}
-                <a
+                <motion.a
                   href={vid.sourceUrl || vid.videoUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center justify-end gap-1 text-xs text-slate-400 hover:text-cyan-400 transition-colors"
+                  whileHover={{ x: -2 }}
+                  transition={SPRING.snappy}
+                  className="flex items-center justify-end gap-1 text-sm text-slate-400 hover:text-cyan-400 transition-colors"
                 >
-                  Buka <ExternalLink className="w-3 h-3" />
-                </a>
+                  Buka <ExternalLink className="w-4 h-4" />
+                </motion.a>
               </div>
             );
           })}

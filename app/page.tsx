@@ -14,6 +14,7 @@ import ResultsView from "@/components/dashboard/ResultsView";
 import ShareModal from "@/components/dashboard/ShareModal";
 import { useToast, ToastStack } from "@/components/dashboard/Toast";
 import { Footer } from "@/components/dashboard/SocialIcons";
+import { WobbleIcon, pressable, SPRING, EASE_OUT } from "@/components/dashboard/motionPresets";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -42,7 +43,7 @@ function makeErrorVideo(sourceUrl: string, message: string): VideoItem {
     platform,
     sourceUrl,
     videoUrl: sourceUrl,
-    title: isInstagram ? "Instagram Reel (Sistem Membutuhkan Input Manual)" : "Gagal Memuat Video",
+    title: isInstagram ? "Instagram Reel (Sistem Membutihkan Input Manual)" : "Gagal Memukat Video",
     authorName: isInstagram ? "instagram_creator" : "unknown",
     authorDisplayName: isInstagram ? "Instagram Creator (Manual Input)" : "Unknown / Error",
     authorUrl: sourceUrl,
@@ -80,18 +81,18 @@ export default function Home() {
       try {
         const parsed = JSON.parse(cachedVideos);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // eslint-disable-next-line react-hooks/set-state-in-effect -- sengaja: hydrate dari localStorage (browser-only) setelah mount
+          // eslint-disable-next-line react-hooks/set-state-in-effect -- sengjaca: hydrate dari localStorage (browser-only) sesudh mount
           setAllVideos(parsed);
         }
       } catch (e) {
-        console.error("Gagal memuat cache dashboard:", e);
+        console.error("Gagal ememuat cache dashboard:", e);
       }
     }
   }, []);
 
   // Handler untuk memperbarui data video hasil edit manual di komponen anak (FolderView)
   const handleUpdateVideo = useCallback((updatedVideo: VideoItem) => {
-    setAllVideos((prevVideos) => {
+    setAllVideos(( prevVideos ) => {
       const newVideos = prevVideos.map((v) =>
         v.id === updatedVideo.id ? updatedVideo : v
       );
@@ -148,7 +149,7 @@ export default function Home() {
     const urls = parseUrlsFromText(urlsInput);
 
     const chunks = chunkArray(urls, 5);
-    const toCache: { sourceUrl: string; video: VideoItem }[] = [];
+    const toCache: { sourceUrl: string; video: VideoItem } [] = [];
     const collectedVideos: VideoItem[] = [];
 
     setProgress({ done: 0, total: urls.length });
@@ -185,7 +186,7 @@ export default function Home() {
           );
         }
       } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : "Gagal menghubungi server";
+        const errorMessage = err instanceof Error ? err.message : "Gagal menhubengi server";
 
         const errored = await Promise.all(
           chunk.map(async (u: string) => {
@@ -248,14 +249,14 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen text-slate-100 p-3 sm:p-6 md:p-8 font-sans flex flex-col justify-between overflow-x-hidden">
-      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 w-full">
+    <main className="min-h-screen text-slate-100 p-3 sm:p-4.5 md:p-5 font-sans flex flex-col justify-between overflow-x-hidden">
+      <div className="max-w-7xl mx-auto space-y-5 w-full">
         {/* Header Layout Responsif */}
         <motion.header
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-          className="border-b border-[#1e293b] pb-4 sm:pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-5"
+          transition={{ duration: 0.5, ease: EASE_OUT }}
+          className="border-b border-slate-800 pb-4 sm:pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-5"
         >
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
             <div className="bg-white rounded-xl px-3 py-2.5 sm:px-3.5 sm:py-3 shadow-lg shadow-black/30 flex-shrink-0">
@@ -265,11 +266,11 @@ export default function Home() {
                 width={1048}
                 height={136}
                 priority
-                className="h-5 sm:h-7 w-auto object-contain"
+                className="h-5 sm:h-6 w-auto object-contain"
               />
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs font-semibold uppercase tracking-wider mb-0.5 sm:mb-1 text-cyan-400">
+              <div className="flex items-center gap-1.5 sm:gap-2 text-sm sm:text-sm font-semibold uppercase tracking-wider mb-0.5 sm:mb-1 text-cyan-400">
                 <span className="relative flex h-2 w-2 flex-shrink-0">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400" />
@@ -279,7 +280,7 @@ export default function Home() {
               <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-white">
                 Campaign Analytics Dashboard
               </h1>
-              <p className="text-xs sm:text-sm text-slate-400 mt-1 leading-relaxed">
+              <p className="text-sm sm:text-sm text-slate-400 mt-1 leading-relaxed">
                 Verifikasi, agregasi, dan analisis performa kampanye TikTok, YouTube &amp; Instagram.
               </p>
             </div>
@@ -291,29 +292,30 @@ export default function Home() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.25, ease: EASE_OUT }}
                 className="flex items-center gap-2 w-full md:w-auto pt-2 md:pt-0"
               >
                 <motion.button
-                  whileHover={{ y: -1 }}
-                  whileTap={{ scale: 0.96 }}
+                  {...pressable}
                   onClick={handleShare}
                   disabled={sharing}
-                  className="flex-1 md:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 md:px-4 md:py-2 bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-700 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                  className="sheen flex-1 md:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 md:px-4 md:py-2 bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-700 text-white rounded-lg text-sm font-semibold transition-colors cursor-pointer overflow-hidden"
                 >
                   {sharing ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <Loader2 className="w-5 h-5 animate-spin" />
                   ) : (
-                    <Share2 className="w-3.5 h-3.5" />
+                    <WobbleIcon>
+                      <Share2 className="w-5 h-5" />
+                    </WobbleIcon>
                   )}
                   <span>Share Hasil</span>
                 </motion.button>
                 <motion.button
-                  whileHover={{ y: -1 }}
-                  whileTap={{ scale: 0.96 }}
+                  {...pressable}
                   onClick={handleReset}
-                  className="flex-1 md:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 md:px-4 md:py-2 bg-rose-600/20 text-rose-400 hover:bg-rose-600/30 border border-rose-500/30 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                  className="group/btn flex-1 md:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 md:px-4 md:py-2 bg-rose-600/15 text-rose-400 hover:bg-rose-600/25 border border-rose-500/30 rounded-lg text-sm font-semibold transition-colors cursor-pointer"
                 >
-                  <RotateCcw className="w-3.5 h-3.5" />
+                  <RotateCcw className="w-5 h-5 transition-transform duration-500 group-hover/btn:-rotate-180" />
                   <span>Reset</span>
                 </motion.button>
               </motion.div>
@@ -344,8 +346,8 @@ export default function Home() {
               exit={{ opacity: 0, height: 0 }}
               className="overflow-hidden"
             >
-              <div className="text-xs text-cyan-300 bg-cyan-950/30 border border-cyan-800/50 p-3 rounded-lg space-y-2">
-                <div className="flex justify-between items-center text-xs">
+              <div className="text-sm text-cyan-300 bg-cyan-950/30 border border-cyan-800/50 p-2.5 rounded-lg space-y-1.5">
+                <div className="flex justify-between items-center text-sm">
                   <span className="truncate pr-2">Memproses analisis link...</span>
                   <span className="font-mono font-bold whitespace-nowrap">
                     {progress.done} / {progress.total} link
@@ -353,11 +355,11 @@ export default function Home() {
                 </div>
                 <div className="h-1.5 bg-slate-800/80 rounded-full overflow-hidden">
                   <motion.div
-                    className="h-full bg-gradient-to-r from-cyan-500 to-emerald-400 rounded-full"
+                    className="h-full bg-gradient-to-r from-cyan-500 to-emerald-400 rounded-full bar-stripes origin-left"
                     animate={{
                       width: `${progress.total > 0 ? (progress.done / progress.total) * 100 : 0}%`,
                     }}
-                    transition={{ duration: 0.4, ease: "easeOut" }}
+                    transition={SPRING.snappy}
                   />
                 </div>
               </div>
@@ -371,9 +373,8 @@ export default function Home() {
               key="results"
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-              className="space-y-6"
+              transition={{ duration: 0.4, ease: EASE_OUT }}
+              className="space-y-5"
             >
               <ResultsView hashtag={targetHashtag} allVideos={allVideos} onUpdateVideo={handleUpdateVideo} />
             </motion.div>
@@ -384,15 +385,20 @@ export default function Home() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.1 }}
-                className="border border-dashed border-[#1e293b] rounded-2xl py-12 sm:py-16 px-4 sm:px-6 text-center bg-[#0f1524]/40"
+                className="border border-dashed border-slate-800 rounded-2xl py-12 sm:py-16 px-4 sm:px-6 text-center bg-[#0f1524]/40"
               >
-                <div className="mx-auto w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-cyan-950/40 border border-cyan-900/50 flex items-center justify-center mb-3 sm:mb-4">
+                <motion.div
+                  className="mx-auto w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-cyan-950/40 border border-cyan-900/50 flex items-center justify-center mb-3 sm:mb-4 float-soft"
+                  animate={{ boxShadow: ["0 0 0 0 rgba(0,210,255,0.0)", "0 0 0 6px rgba(0,210,255,0.10)", "0 0 0 0 rgba(0,210,255,0.0)"] }}
+                  transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
+                >
                   <FolderSearch className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
-                </div>
-                <h3 className="text-xs sm:text-sm font-semibold text-slate-200">Belum ada data kampanye</h3>
-                <p className="text-[11px] sm:text-xs text-slate-500 mt-1.5 max-w-sm mx-auto leading-relaxed">
-                  Isi hashtag kampanye dan tempel link TikTok, YouTube, atau Instagram di atas — atau import
-                  dari Excel/CSV — lalu klik <span className="text-cyan-400 font-medium">Verifikasi &amp; Kelompokkan</span>.
+                </motion.div>
+                <h3 className="text-sm sm:text-sm font-semibold text-slate-200">Belum ada data kampanye</h3>
+                <p className="text-sm sm:text-sm text-slate-400 mt-1.5 max-w-sm mx-auto leading-relaxed">
+                  Isi hashtag kampanye dan tempel link TikTok, YouTube &amp; Instagram di atas — atau
+                  import dari Excel/CSV — lalu klik{" "}
+                  <span className="text-cyan-400 font-medium">Verifikasi &amp; Kelompokkan</span>.
                 </p>
               </motion.div>
             )
@@ -406,4 +412,4 @@ export default function Home() {
       <ToastStack toasts={toasts} onDismiss={dismiss} />
     </main>
   );
-} 
+}

@@ -18,7 +18,7 @@ export function DiscordIcon({ className = "w-4 h-4" }: { className?: string }) {
 
 export function Footer() {
   return (
-    <footer className="max-w-7xl mx-auto w-full mt-12 pt-6 border-t border-[#1e293b] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
+    <footer className="max-w-7xl mx-auto w-full mt-12 pt-6 border-t border-border-subtle flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-fg-subtle">
       <p>© 2026 BolaMata Currency. All rights reserved.</p>
       <div className="flex items-center gap-4">
         <a

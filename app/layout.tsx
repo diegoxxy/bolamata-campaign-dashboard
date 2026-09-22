@@ -2,14 +2,19 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
+// DESIGN CONTRACT: --font-sans & --font-mono wajib didefinisikan via @theme
+// agar utility `font-sans`/`font-mono` Tailwind v4 resolve ke Geist (bukan
+// fallback system-ui). Fix bug: font-sans sebelumnya tak terdefinisi → Geist idle.
 const geistSans = Geist({
-  variable: "--font-geist-sans",
+  variable: "--font-sans",
   subsets: ["latin"],
+  display: "swap",
 });
 
 const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+  variable: "--font-mono",
   subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {

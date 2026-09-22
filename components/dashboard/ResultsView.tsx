@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { AlertTriangle } from "lucide-react";
 import type {
   CreatorSortKey,
   StatusFilter,
@@ -18,6 +19,7 @@ import KpiRibbon from "./KpiRibbon";
 import Toolbar from "./Toolbar";
 import FolderView from "./FolderView";
 import MasterTable from "./MasterTable";
+import { EASE_OUT } from "./motionPresets";
 
 interface ResultsViewProps {
   hashtag: string;
@@ -65,7 +67,7 @@ export default function ResultsView({
     const validCreators = sorted.filter((c) => c.authorName.toLowerCase() !== "unknown");
 
     if (unknownGroup) {
-      return [{ ...unknownGroup, authorDisplayName: "⚠️ Link Error / Unknown" }, ...validCreators];
+      return [{ ...unknownGroup, authorDisplayName: "Link Error / Unknown" }, ...validCreators];
     }
     return validCreators;
   }, [filteredVideos, creatorSort]);
@@ -108,19 +110,36 @@ export default function ResultsView({
     };
   }, [allVideos]);
 
-  return (
-    <div className="space-y-6">
-      {/* Perbaikan Catatan Banner: Tampilan Dinamis Sesuai Platform Error */}
-      {issueSummary && (
-        <div className="p-4 rounded-xl bg-amber-950/20 border border-amber-800/40 text-amber-300 text-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <div>
-            <strong className="font-semibold text-amber-200">Catatan Verifikasi Link:</strong> Ditemukan{" "}
-            <span className="font-bold underline">{issueSummary.detailText}</span> yang bermasalah, privat, atau terkena proteksi scraping. Anda dapat mengeklik link asli untuk mengecek data manual jika diperlukan.
-          </div>
-        </div>
-      )}
+  const cleanHashtag = `#${hashtag.toLowerCase().replace("#", "").trim()}`;
+  const exportArgs = { hashtag: cleanHashtag, globalMetrics, creators: creatorsForFolder, allVideos };
 
-      <KpiRibbon metrics={globalMetrics} hashtag={`#${hashtag.toLowerCase().replace("#", "").trim()}`} />
+  return (
+    <div className="space-y-5">
+      {/* Banner catatan: animasi slide-in saat muncul */}
+      <AnimatePresence>
+        {issueSummary && (
+          <motion.div
+            initial={{ opacity: 0, height: 0, y: -8 }}
+            animate={{ opacity: 1, height: "auto", y: 0 }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3, ease: EASE_OUT }}
+            className="overflow-hidden"
+          >
+            <div className="p-4 rounded-xl bg-amber-950/15 border border-amber-800/40 text-amber-300 text-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <div className="flex items-start gap-2.5">
+                <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <strong className="font-semibold text-amber-200">Catatan Verifikasi Link:</strong> Ditemukan{" "}
+                  <span className="font-bold underline">{issueSummary.detailText}</span> yang bermasalah,
+                  privat, atau terkena proteksi scraping. Klik link asli untuk cek manual jika diperlukan.
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <KpiRibbon metrics={globalMetrics} hashtag={cleanHashtag.slice(1)} />
 
       <Toolbar
         search={search}
@@ -137,32 +156,18 @@ export default function ResultsView({
         onCreatorSortChange={setCreatorSort}
         shownCount={filteredVideos.length}
         totalCount={allVideos.length}
-        onExportExcel={() =>
-          exportResultToExcel({
-            hashtag: `#${hashtag.toLowerCase().replace("#", "").trim()}`,
-            globalMetrics,
-            creators: creatorsForFolder,
-            allVideos,
-          })
-        }
-        onExportPdf={() =>
-          exportResultToPdf({
-            hashtag: `#${hashtag.toLowerCase().replace("#", "").trim()}`,
-            globalMetrics,
-            creators: creatorsForFolder,
-            allVideos,
-          })
-        }
+        onExportExcel={() => exportResultToExcel(exportArgs)}
+        onExportPdf={() => exportResultToPdf(exportArgs)}
       />
 
       <AnimatePresence mode="wait">
         {viewMode === "folder" ? (
           <motion.div
             key="folder"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.25, ease: EASE_OUT }}
           >
             <FolderView
               creators={creatorsForFolder}
@@ -173,10 +178,10 @@ export default function ResultsView({
         ) : (
           <motion.div
             key="table"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.25, ease: EASE_OUT }}
           >
             <MasterTable videos={sortedVideosForTable} />
           </motion.div>

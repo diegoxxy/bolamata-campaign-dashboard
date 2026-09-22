@@ -41,13 +41,13 @@ function NotFoundView() {
           <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
         </div>
         <h1 className="text-base sm:text-lg font-bold text-white">Link Tidak Ditemukan</h1>
-        <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+        <p className="text-sm sm:text-sm text-slate-400 leading-relaxed">
           Link share ini tidak valid atau sudah dihapus oleh pembuatnya. Hubungi pengirim link untuk
           mendapatkan link yang baru.
         </p>
         <Link
           href="/"
-          className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-xs font-semibold transition-colors"
+          className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-sm font-semibold transition-colors"
         >
           Ke Halaman Utama
         </Link>

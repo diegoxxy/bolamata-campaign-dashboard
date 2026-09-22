@@ -2,8 +2,9 @@
 
 import React, { useRef, useState, useEffect } from "react";
 import { motion } from "motion/react";
-import { Upload, Play, Loader2 } from "lucide-react";
+import { Upload, Play, Loader2, Hash } from "lucide-react";
 import { parseImportFile, ParseResult } from "@/lib/social/importFile";
+import { WobbleIcon, pressable } from "./motionPresets";
 
 export interface InputPanelProps {
   hashtag?: string;
@@ -116,14 +117,17 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
     }
   };
 
+  const canSubmit = !isLoading && !!hashtag && !!rawUrls.trim();
+
   return (
-    <div className="relative bg-[#131B2E]/90 backdrop-blur-sm border border-[#1E293B] rounded-2xl p-6 shadow-2xl shadow-black/20 mb-8 space-y-6 overflow-hidden">
+    <div className="card-elevated relative p-5 mb-5 space-y-4 overflow-hidden">
       {/* subtle top accent line */}
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
 
       {/* Input Hashtag */}
       <div>
-        <label className="block text-xs font-bold tracking-wider text-slate-400 uppercase mb-2">
+        <label className="flex items-center gap-1.5 text-sm font-bold tracking-wider text-fg-muted uppercase mb-2">
+          <Hash className="w-5 h-5 text-cyan-400" />
           Hashtag Syarat Kampanye
         </label>
         <input
@@ -131,58 +135,64 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
           value={hashtag}
           onChange={(e) => handleHashtagChange(e.target.value)}
           placeholder="Contoh: BertamuSpecial"
-          className="w-full bg-[#0B0F19] border border-[#1E293B] rounded-lg px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+          className="field w-full text-sm"
         />
       </div>
 
       {/* Input Textarea & Import File Button */}
       <div>
-        <div className="flex items-center justify-between mb-2">
-          <label className="block text-xs font-bold tracking-wider text-slate-400 uppercase">
+        <div className="flex items-end justify-between mb-2 gap-3">
+          <label className="block text-sm font-bold tracking-wider text-fg-muted uppercase max-w-[60%] sm:max-w-[70%]">
             Daftar Link Video TikTok, YouTube &amp; Instagram (1 URL Per Baris)
           </label>
-          <div>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileUpload}
-              accept=".xlsx, .xls, .csv"
-              className="hidden"
-            />
-            <motion.button
-              whileHover={{ y: -1 }}
-              whileTap={{ scale: 0.96 }}
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-1.5 text-xs font-semibold text-cyan-400 hover:text-cyan-300 bg-cyan-950/40 border border-cyan-800/50 hover:border-cyan-500/50 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-            >
-              <Upload className="w-3.5 h-3.5" />
-              Import Excel / CSV
-            </motion.button>
-          </div>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            accept=".xlsx, .xls, .csv"
+            className="hidden"
+          />
+          <motion.button
+            {...pressable}
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-cyan-400 hover:text-cyan-300 bg-cyan-950/40 border border-cyan-800/50 hover:border-cyan-500/50 px-3 py-1.5 rounded-lg transition-colors cursor-pointer flex-shrink-0"
+          >
+            <WobbleIcon intensity={0.9}>
+              <Upload className="w-5 h-5" />
+            </WobbleIcon>
+            Import Excel / CSV
+          </motion.button>
         </div>
         <textarea
           rows={6}
           value={rawUrls}
           onChange={(e) => handleUrlsChange(e.target.value)}
-          placeholder={`https://www.tiktok.com/@username/video/123456789\nhttps://www.youtube.com/shorts/c7TRyQI15Qk\nhttps://www.instagram.com/reel/C12345678/`}
-          className="w-full bg-[#0B0F19] border border-[#1E293B] rounded-lg p-4 text-xs font-mono text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all resize-y"
+          placeholder={"https://www.tiktok.com/@username/video/123456789\nhttps://www.youtube.com/shorts/c7TRyQI15Qk\nhttps://www.instagram.com/reel/C12345678/"}
+          className="field enterprise-scroll w-full p-4 text-sm font-mono resize-y leading-relaxed"
         />
+        {rawUrls.trim() && (
+          <p className="text-xs text-fg-subtle mt-1.5 font-mono">
+            {rawUrls.split("\n").filter((l) => l.trim()).length} link terdeteksi
+          </p>
+        )}
       </div>
 
       {/* Submit Button */}
       <motion.button
-        whileHover={isLoading ? undefined : { y: -1 }}
-        whileTap={isLoading ? undefined : { scale: 0.98 }}
+        whileHover={isLoading || !canSubmit ? undefined : { y: -1, scale: 1.005 }}
+        whileTap={isLoading || !canSubmit ? undefined : { scale: 0.985 }}
         type="button"
-        disabled={isLoading || !hashtag || !rawUrls.trim()}
+        disabled={!canSubmit}
         onClick={props.onAnalyze}
-        className="w-full bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-800 disabled:text-slate-600 disabled:cursor-not-allowed text-white font-semibold py-3.5 px-6 rounded-lg flex items-center justify-center gap-2 transition-colors shadow-lg shadow-cyan-950/50 cursor-pointer"
+        className="sheen relative w-full bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-800 disabled:text-fg-subtle disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg flex items-center justify-center gap-2 transition-colors shadow-lg shadow-cyan-950/50 cursor-pointer overflow-hidden"
       >
         {isLoading ? (
           <Loader2 className="w-4 h-4 animate-spin" />
         ) : (
-          <Play className="w-4 h-4 fill-current" />
+          <WobbleIcon intensity={1.1}>
+            <Play className="w-4 h-4 fill-current" />
+          </WobbleIcon>
         )}
         {isLoading ? "Memproses Data Real-Time..." : "Verifikasi & Kelompokkan Per Username"}
       </motion.button>
