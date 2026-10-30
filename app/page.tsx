@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { FolderSearch, RotateCcw, Share2, Loader2 } from "lucide-react";
 import type { VideoBatchResponse, VideoItem } from "@/lib/social/types";
 import { chunkArray } from "@/lib/social/chunk";
+import { dedupeInputUrls, dedupeVideos } from "@/lib/social/dedupe";
 import { setManyInCache } from "@/lib/social/cache";
 import { fetchInstagramDataClient } from "@/lib/social/client/fetchInstagramClient";
 
@@ -18,16 +19,9 @@ import { WobbleIcon, pressable, SPRING, EASE_OUT } from "@/components/dashboard/
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/** Link kembar (teks sama, atau ID video sama walau beda format) dibuang sebelum scan. */
 function parseUrlsFromText(text: string): string[] {
-  const seen = new Set<string>();
-  const urls: string[] = [];
-  for (const line of text.split("\n")) {
-    const trimmed = line.trim();
-    if (trimmed.length === 0 || seen.has(trimmed)) continue;
-    seen.add(trimmed);
-    urls.push(trimmed);
-  }
-  return urls;
+  return dedupeInputUrls(text.split("\n"));
 }
 
 function makeErrorVideo(sourceUrl: string, message: string): VideoItem {
@@ -82,7 +76,7 @@ export default function Home() {
         const parsed = JSON.parse(cachedVideos);
         if (Array.isArray(parsed) && parsed.length > 0) {
           // eslint-disable-next-line react-hooks/set-state-in-effect -- sengjaca: hydrate dari localStorage (browser-only) sesudh mount
-          setAllVideos(parsed);
+          setAllVideos(dedupeVideos(parsed));
         }
       } catch (e) {
         console.error("Gagal ememuat cache dashboard:", e);
@@ -179,7 +173,7 @@ export default function Home() {
             data.videos.map((v: VideoItem) => enrichInstagramVideo(v, cleanHashtag))
           );
 
-          setAllVideos((prev) => [...prev, ...processedVideos]);
+          setAllVideos((prev) => dedupeVideos([...prev, ...processedVideos]));
           collectedVideos.push(...processedVideos);
           toCache.push(
             ...processedVideos.map((v: VideoItem) => ({ sourceUrl: v.sourceUrl, video: v }))
@@ -195,7 +189,7 @@ export default function Home() {
           })
         );
 
-        setAllVideos((prev) => [...prev, ...errored]);
+        setAllVideos((prev) => dedupeVideos([...prev, ...errored]));
         collectedVideos.push(...errored);
         toCache.push(
           ...errored.map((v: VideoItem) => ({ sourceUrl: v.sourceUrl, video: v }))
@@ -211,7 +205,13 @@ export default function Home() {
       await setManyInCache(toCache);
     }
 
-    localStorage.setItem("tiktok_analytics_last_scan", JSON.stringify(collectedVideos));
+    // Short link baru ketahuan ID videonya setelah di-resolve server, jadi kembarannya dibuang di sini.
+    const uniqueVideos = dedupeVideos(collectedVideos);
+    const duplicateCount = collectedVideos.length - uniqueVideos.length;
+    localStorage.setItem("tiktok_analytics_last_scan", JSON.stringify(uniqueVideos));
+    if (duplicateCount > 0) {
+      showToast(`${duplicateCount} link kembar (video yang sama) dibuang, sisa ${uniqueVideos.length} video unik.`);
+    }
 
     setLoading(false);
     setProgress(null);
@@ -333,7 +333,7 @@ export default function Home() {
           onNotify={showToast}
           onImportSuccess={(urls: string[]) => {
             const existing = parseUrlsFromText(urlsInput);
-            const combined = Array.from(new Set([...existing, ...urls]));
+            const combined = dedupeInputUrls([...existing, ...urls]);
             setUrlsInput(combined.join("\n"));
           }}
         />

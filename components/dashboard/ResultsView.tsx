@@ -14,6 +14,7 @@ import { exportResultToExcel } from "@/lib/social/exportExcel";
 import { exportResultToPdf } from "@/lib/social/exportPdf";
 import { computeGlobalMetrics, groupVideosByCreator } from "@/lib/social/aggregate";
 import { filterVideos, sortCreators, sortVideos } from "@/lib/social/filterSort";
+import { dedupeVideos } from "@/lib/social/dedupe";
 
 import KpiRibbon from "./KpiRibbon";
 import Toolbar from "./Toolbar";
@@ -30,7 +31,7 @@ interface ResultsViewProps {
 
 export default function ResultsView({
   hashtag,
-  allVideos,
+  allVideos: rawVideos,
   readOnly = false,
   onUpdateVideo,
 }: ResultsViewProps) {
@@ -41,6 +42,8 @@ export default function ResultsView({
   const [videoSort, setVideoSort] = useState<VideoSortKey>("views_desc");
   const [creatorSort, setCreatorSort] = useState<CreatorSortKey>("creator_views_desc");
 
+  // Video kembar (ID sama) tidak boleh dihitung dua kali di KPI, per kreator, maupun export.
+  const allVideos = useMemo(() => dedupeVideos(rawVideos), [rawVideos]);
   const globalMetrics = useMemo(() => computeGlobalMetrics(allVideos), [allVideos]);
 
   const filters = useMemo(

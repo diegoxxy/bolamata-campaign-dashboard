@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import { dedupeInputUrls } from "./dedupe";
 
 /**
  * Membersihkan URL media dari typo sintaks dan query string/parameter anti-bot
@@ -111,7 +112,7 @@ export async function parseImportFile(file: File): Promise<ParseResult> {
           }
         });
 
-        const uniqueUrls = Array.from(new Set(extractedUrls));
+        const uniqueUrls = dedupeInputUrls(extractedUrls);
         resolve(getImportSummary(uniqueUrls));
       } catch (err) {
         console.error("Error parsing excel file:", err);

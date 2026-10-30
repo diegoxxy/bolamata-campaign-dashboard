@@ -4,6 +4,7 @@ import React, { useRef, useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { Upload, Play, Loader2, Hash } from "lucide-react";
 import { parseImportFile, ParseResult } from "@/lib/social/importFile";
+import { dedupeInputUrls } from "@/lib/social/dedupe";
 import { WobbleIcon, pressable } from "./motionPresets";
 
 export interface InputPanelProps {
@@ -98,7 +99,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
         .map((u) => u.trim())
         .filter(Boolean);
 
-      const combined = Array.from(new Set([...existingUrls, ...extractedUrls]));
+      const combined = dedupeInputUrls([...existingUrls, ...extractedUrls]);
       const newText = combined.join("\n");
 
       // Update local & parent state sekaligus
