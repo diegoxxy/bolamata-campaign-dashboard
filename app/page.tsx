@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "motion/react";
 import { FolderSearch, RotateCcw, Share2, Loader2 } from "lucide-react";
 import type { VideoBatchResponse, VideoItem } from "@/lib/social/types";
 import { chunkArray } from "@/lib/social/chunk";
-import { dedupeInputUrls, dedupeVideos } from "@/lib/social/dedupe";
+import { dedupeInputUrls, dedupeVideos, inputUrlKey, videoKey } from "@/lib/social/dedupe";
 import { setManyInCache } from "@/lib/social/cache";
 import { fetchInstagramDataClient } from "@/lib/social/client/fetchInstagramClient";
 
@@ -22,6 +22,18 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 /** Link kembar (teks sama, atau ID video sama walau beda format) dibuang sebelum scan. */
 function parseUrlsFromText(text: string): string[] {
   return dedupeInputUrls(text.split("\n"));
+}
+
+const LAST_HASHTAG_KEY = "tiktok_analytics_last_hashtag";
+
+/** Kunci semua link/video yang sudah diproses (ID video + link input aslinya). */
+function scannedKeySet(videos: VideoItem[]): Set<string> {
+  const keys = new Set<string>();
+  for (const v of videos) {
+    keys.add(videoKey(v));
+    if (v.sourceUrl) keys.add(inputUrlKey(v.sourceUrl));
+  }
+  return keys;
 }
 
 function makeErrorVideo(sourceUrl: string, message: string): VideoItem {
@@ -68,14 +80,25 @@ export default function Home() {
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
 
+  // Hashtag yang dipakai scan terakhir; kalau hashtag diganti, semua link di-scan ulang.
+  const [lastScanHashtag, setLastScanHashtag] = useState<string | null>(null);
+
   useEffect(() => {
+    try {
+      const savedHashtag = localStorage.getItem(LAST_HASHTAG_KEY);
+      if (savedHashtag) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- sengaja: hydrate dari localStorage sesudah mount
+        setLastScanHashtag(savedHashtag);
+        setTargetHashtag((cur) => cur || savedHashtag);
+      }
+    } catch {}
+
     const cachedVideos = localStorage.getItem("tiktok_analytics_last_scan");
 
     if (cachedVideos) {
       try {
         const parsed = JSON.parse(cachedVideos);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // eslint-disable-next-line react-hooks/set-state-in-effect -- sengjaca: hydrate dari localStorage (browser-only) sesudh mount
           setAllVideos(dedupeVideos(parsed));
         }
       } catch (e) {
@@ -136,11 +159,27 @@ export default function Home() {
   async function handleScan() {
     if (!targetHashtag.trim() || !urlsInput.trim()) return;
 
-    setLoading(true);
-    setAllVideos([]);
-
     const cleanHashtag = targetHashtag.replace(/^#/, "").trim().toLowerCase();
-    const urls = parseUrlsFromText(urlsInput);
+    const allUrls = parseUrlsFromText(urlsInput);
+
+    // Hashtag beda = syarat kampanye beda, jadi semua link wajib dicek ulang.
+    // Hashtag sama = cukup scan link baru, hasil lama dipertahankan.
+    const hashtagChanged = lastScanHashtag !== null && lastScanHashtag !== cleanHashtag;
+    const baseVideos = hashtagChanged ? [] : allVideos;
+    const doneKeys = scannedKeySet(baseVideos);
+    const urls = hashtagChanged ? allUrls : allUrls.filter((u) => !doneKeys.has(inputUrlKey(u)));
+
+    if (urls.length === 0) {
+      showToast("Semua link sudah diproses, tidak ada link baru untuk ditambahkan.");
+      return;
+    }
+
+    setLoading(true);
+    if (hashtagChanged) setAllVideos([]);
+    setLastScanHashtag(cleanHashtag);
+    try {
+      localStorage.setItem(LAST_HASHTAG_KEY, cleanHashtag);
+    } catch {}
 
     const chunks = chunkArray(urls, 5);
     const toCache: { sourceUrl: string; video: VideoItem } [] = [];
@@ -206,11 +245,14 @@ export default function Home() {
     }
 
     // Short link baru ketahuan ID videonya setelah di-resolve server, jadi kembarannya dibuang di sini.
-    const uniqueVideos = dedupeVideos(collectedVideos);
-    const duplicateCount = collectedVideos.length - uniqueVideos.length;
+    const merged = [...baseVideos, ...collectedVideos];
+    const uniqueVideos = dedupeVideos(merged);
+    const duplicateCount = merged.length - uniqueVideos.length;
     localStorage.setItem("tiktok_analytics_last_scan", JSON.stringify(uniqueVideos));
     if (duplicateCount > 0) {
       showToast(`${duplicateCount} link kembar (video yang sama) dibuang, sisa ${uniqueVideos.length} video unik.`);
+    } else if (baseVideos.length > 0) {
+      showToast(`${uniqueVideos.length - baseVideos.length} video baru ditambahkan, total ${uniqueVideos.length} video.`);
     }
 
     setLoading(false);
@@ -221,13 +263,26 @@ export default function Home() {
     setAllVideos([]);
     setTargetHashtag("");
     setUrlsInput("");
+    setLastScanHashtag(null);
     localStorage.removeItem("tiktok_analytics_last_scan");
+    localStorage.removeItem(LAST_HASHTAG_KEY);
   }
+
+  const cleanInputHashtag = targetHashtag.replace(/^#/, "").trim().toLowerCase();
+  const willRescanAll = lastScanHashtag !== null && lastScanHashtag !== cleanInputHashtag;
+  const doneKeys = useMemo(() => scannedKeySet(allVideos), [allVideos]);
+  const newLinkCount = useMemo(
+    () =>
+      allVideos.length === 0 || willRescanAll
+        ? null
+        : parseUrlsFromText(urlsInput).filter((u) => !doneKeys.has(inputUrlKey(u))).length,
+    [allVideos.length, willRescanAll, urlsInput, doneKeys]
+  );
 
   const hasResult = allVideos.length > 0;
 
   async function handleShare() {
-    if (!hasResult) return;
+    if (!hasResult || loading) return;
     setSharing(true);
     try {
       const res = await fetch("/api/share", {
@@ -298,7 +353,7 @@ export default function Home() {
                 <motion.button
                   {...pressable}
                   onClick={handleShare}
-                  disabled={sharing}
+                  disabled={sharing || loading}
                   className="sheen flex-1 md:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 md:px-4 md:py-2 bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-700 text-white rounded-lg text-sm font-semibold transition-colors cursor-pointer overflow-hidden"
                 >
                   {sharing ? (
@@ -330,6 +385,7 @@ export default function Home() {
           onRawUrlsChange={setUrlsInput}
           onAnalyze={handleScan}
           isLoading={loading}
+          newLinkCount={newLinkCount}
           onNotify={showToast}
           onImportSuccess={(urls: string[]) => {
             const existing = parseUrlsFromText(urlsInput);

@@ -24,6 +24,8 @@ export interface InputPanelProps {
   onAnalyze?: () => void;
   onImportSuccess?: (urls: string[]) => void;
   onNotify?: (message: string, variant: "success" | "error") => void;
+  /** Jumlah link yang belum pernah diproses; null = belum ada hasil (scan penuh). */
+  newLinkCount?: number | null;
 
   useCache?: boolean;
   setUseCache?: (val: boolean) => void;
@@ -175,6 +177,11 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
         {rawUrls.trim() && (
           <p className="text-xs text-fg-subtle mt-1.5 font-mono">
             {rawUrls.split("\n").filter((l) => l.trim()).length} link terdeteksi
+            {props.newLinkCount != null && (
+              <span className={props.newLinkCount > 0 ? "text-cyan-400" : undefined}>
+                {" "}· {props.newLinkCount} link baru
+              </span>
+            )}
           </p>
         )}
       </div>
@@ -195,7 +202,13 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
             <Play className="w-4 h-4 fill-current" />
           </WobbleIcon>
         )}
-        {isLoading ? "Memproses Data Real-Time..." : "Verifikasi & Kelompokkan Per Username"}
+        {isLoading
+          ? "Memproses Data Real-Time..."
+          : props.newLinkCount != null
+            ? props.newLinkCount > 0
+              ? `Tambahkan ${props.newLinkCount} Link Baru ke Hasil`
+              : "Tidak Ada Link Baru"
+            : "Verifikasi & Kelompokkan Per Username"}
       </motion.button>
     </div>
   );
