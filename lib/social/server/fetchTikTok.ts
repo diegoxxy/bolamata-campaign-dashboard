@@ -39,20 +39,24 @@ export async function fetchTikTokDataWithRetry(
   let result: VideoItem | null = null;
   for (let attempt = 1; attempt <= 4; attempt++) {
     await tikwmGate();
-    result = await fetchTikTokDataOnce(resolvedUrl);
+    // Jangan sampai 1 request melewati deadline batch
+    const timeoutMs = Math.min(TIKWM_TIMEOUT_MS, deadline - Date.now() - 1000);
+    if (timeoutMs < 5000) break;
+    result = await fetchTikTokDataOnce(resolvedUrl, timeoutMs);
     if (result.status !== "error" || !isTransientTikwmError(result.errorMessage || "")) return result;
     const wait = 1500 * attempt;
     // Tidak cukup waktu untuk coba lagi (jeda + 1 request) → berhenti, biar fungsi Vercel tidak timeout.
     if (Date.now() + wait + TIKWM_TIMEOUT_MS > deadline) break;
     await sleep(wait);
   }
-  return result as VideoItem;
+  return result ?? makeErrorVideo(resolvedUrl, "Waktu batch habis (TikWM lambat) — scan ulang link ini.");
 }
 
 /** Batas tunggu 1 request ke TikWM; kalau lewat dianggap gangguan sesaat (boleh dicoba lagi). */
-const TIKWM_TIMEOUT_MS = 9000;
+// TikWM kadang lambat sekali (antrean di sisi mereka, bisa ~25 dtk per request). Dulu ~1 dtk.
+const TIKWM_TIMEOUT_MS = 35_000;
 
-async function fetchTikTokDataOnce(resolvedUrl: string): Promise<VideoItem> {
+async function fetchTikTokDataOnce(resolvedUrl: string, timeoutMs = TIKWM_TIMEOUT_MS): Promise<VideoItem> {
   const videoId = extractTikTokVideoId(resolvedUrl);
 
   // Jika URL memiliki ID video 19 digit, buat URL netral untuk memutus error typo username (@berframa vs @ber1rama)
@@ -68,7 +72,7 @@ async function fetchTikTokDataOnce(resolvedUrl: string): Promise<VideoItem> {
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
       },
       cache: "no-store",
-      signal: AbortSignal.timeout(TIKWM_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     });
 
     if (!res.ok) {

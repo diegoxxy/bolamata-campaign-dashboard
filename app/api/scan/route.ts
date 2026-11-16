@@ -114,7 +114,7 @@ async function resolveTikTokUrl(url: string): Promise<string> {
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** Waktu maksimal 1 batch (di bawah maxDuration 60 dtk, sisakan ruang untuk kirim respons). */
-const BATCH_BUDGET_MS = 50_000;
+const BATCH_BUDGET_MS = 55_000;
 
 function timeoutVideo(sourceUrl: string): VideoItem {
   const isYouTube = /youtube\.com|youtu\.be/i.test(sourceUrl);
@@ -171,7 +171,9 @@ export async function POST(request: Request) {
       const originalInputUrl = videoUrls[i].trim();
       if (!originalInputUrl) continue;
 
-      if (Date.now() > deadline - 6000) {
+      // TikTok butuh sisa waktu cukup besar karena TikWM bisa lambat (~25 dtk); YouTube/IG cukup sedikit.
+      const needMs = /tiktok\.com/i.test(originalInputUrl) ? 20_000 : 8_000;
+      if (Date.now() > deadline - needMs) {
         videos.push(timeoutVideo(originalInputUrl));
         continue;
       }

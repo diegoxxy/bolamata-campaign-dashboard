@@ -191,16 +191,17 @@ export default function Home() {
     const toCache: { sourceUrl: string; video: VideoItem } [] = [];
     const collectedVideos: VideoItem[] = [];
 
-    const runPass = async (passUrls: string[], chunkSize: number, gapMs: number) => {
+    // Beberapa batch jalan bersamaan (TikWM sekarang bisa ~25 dtk per link, jadi batch kecil + paralel).
+    const runPass = async (passUrls: string[], chunkSize: number, concurrency: number, gapMs: number) => {
     const chunks = chunkArray(passUrls, chunkSize);
     setProgress({ done: 0, total: passUrls.length });
+    let next = 0;
 
-    for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
-      const chunk = chunks[chunkIndex];
-
-      if (chunkIndex > 0) {
-        await delay(gapMs);
-      }
+    const worker = async (workerIndex: number) => {
+      // Worker mulai berselang supaya request tidak berbarengan persis
+      await delay(workerIndex * gapMs);
+      while (next < chunks.length) {
+      const chunk = chunks[next++];
 
       try {
         const res = await fetch("/api/scan", {
@@ -246,11 +247,14 @@ export default function Home() {
       setProgress((prev) =>
         prev ? { ...prev, done: Math.min(prev.total, prev.done + chunk.length) } : null
       );
-    }
+      await delay(gapMs);
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(concurrency, chunks.length) }, (_, i) => worker(i)));
     };
 
     // Putaran 1: semua link
-    await runPass(urls, 5, 1500);
+    await runPass(urls, 1, 4, 1200);
 
     // Putaran 2 (otomatis): link TikTok yang gagal (limit TikWM / batch timeout / server sibuk)
     // di-scan ulang dengan batch kecil & jeda lebih panjang. Hasil sukses menggantikan yang gagal.
@@ -266,7 +270,7 @@ export default function Home() {
     if (retryUrls.length > 0) {
       showToast(`${retryUrls.length} link TikTok gagal di putaran pertama, dicoba ulang otomatis…`);
       await delay(3000);
-      await runPass(retryUrls, 2, 2500);
+      await runPass(retryUrls, 1, 3, 2000);
     }
 
     if (toCache.length > 0) {
