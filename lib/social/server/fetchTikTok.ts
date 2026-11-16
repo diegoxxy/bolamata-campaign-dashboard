@@ -8,10 +8,42 @@ export function extractTikTokVideoId(url: string): string | null {
   return match ? match[1] : null;
 }
 
+// TikWM (gratis) cuma kasih 1 request/detik per IP. Semua panggilan di instance server ini antre
+// dengan jarak TIKWM_GAP_MS, walaupun ada beberapa request scan yang jalan bersamaan.
+const TIKWM_GAP_MS = 1200;
+let nextTikwmSlot = 0;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+async function tikwmGate() {
+  const now = Date.now();
+  const slot = Math.max(now, nextTikwmSlot);
+  nextTikwmSlot = slot + TIKWM_GAP_MS;
+  if (slot > now) await sleep(slot - now);
+}
+
+/** Error sementara (limit / gangguan jaringan) → layak dicoba lagi. Private/dihapus → tidak. */
+function isTransientTikwmError(msg: string): boolean {
+  return /limit|429|HTTP error (429|5\d\d)|fetch failed|timeout|ECONNRESET|network/i.test(msg);
+}
+
+/**
+ * Ambil data video TikTok lewat TikWM, lewat antrean + coba lagi otomatis kalau kena limit
+ * (maks 4x, jeda makin lama). Video yang memang private/dihapus langsung dikembalikan sebagai error.
+ */
 export async function fetchTikTokDataWithRetry(
   resolvedUrl: string,
-  cleanHashtag: string
+  _cleanHashtag?: string
 ): Promise<VideoItem> {
+  let result: VideoItem | null = null;
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    await tikwmGate();
+    result = await fetchTikTokDataOnce(resolvedUrl);
+    if (result.status !== "error" || !isTransientTikwmError(result.errorMessage || "")) return result;
+    await sleep(1500 * attempt);
+  }
+  return result as VideoItem;
+}
+
+async function fetchTikTokDataOnce(resolvedUrl: string): Promise<VideoItem> {
   const videoId = extractTikTokVideoId(resolvedUrl);
 
   // Jika URL memiliki ID video 19 digit, buat URL netral untuk memutus error typo username (@berframa vs @ber1rama)

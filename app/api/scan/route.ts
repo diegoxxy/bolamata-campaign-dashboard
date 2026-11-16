@@ -6,6 +6,9 @@ import type { VideoBatchRequest, VideoBatchResponse, VideoItem } from "@/lib/soc
 
 const MAX_BATCH_SIZE = 30;
 
+// Antrean TikWM + retry kalau kena limit bisa bikin 1 batch (5 link) makan >10 detik.
+export const maxDuration = 60;
+
 /**
  * Normalisasi URL TikTok
  */
@@ -47,7 +50,38 @@ async function resolveTikTokUrl(url: string): Promise<string> {
   const trimmedUrl = url.trim();
   if (!trimmedUrl) return "";
 
-  if (trimmedUrl.includes("vt.tiktok.com") || trimmedUrl.includes("vm.tiktok.com")) {
+  const isShort = /(?:vt|vm)\.tiktok\.com|tiktok\.com\/t\//i.test(trimmedUrl);
+
+  // 1) Cara utama: baca header redirect (Location) tanpa download halaman TikTok.
+  //    Halaman TikTok sering kena anti-bot di server (Vercel) sehingga redirect "follow" gagal,
+  //    lalu short link mentah dikirim ke TikWM → "Url parsing is failed".
+  if (isShort) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        let current = trimmedUrl;
+        for (let hop = 0; hop < 4; hop++) {
+          const res = await fetch(current, {
+            redirect: "manual",
+            cache: "no-store",
+            headers: {
+              "User-Agent":
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            },
+          });
+          const loc = res.headers.get("location");
+          if (!loc) break;
+          current = new URL(loc, current).toString();
+          if (/\/(?:video|photo)\/\d{8,}/.test(current)) return sanitizeAndNormalizeUrl(current).cleanUrl;
+        }
+      } catch (err) {
+        console.error(`Gagal resolve shortlink (manual): ${trimmedUrl}`, err);
+      }
+      await delay(400);
+    }
+  }
+
+  // 2) Cadangan: cara lama (ikuti redirect sampai halaman akhir)
+  if (isShort) {
     try {
       const response = await fetch(trimmedUrl, {
         method: "GET",
