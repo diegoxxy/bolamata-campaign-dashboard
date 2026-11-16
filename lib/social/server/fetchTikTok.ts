@@ -31,17 +31,26 @@ function isTransientTikwmError(msg: string): boolean {
  */
 export async function fetchTikTokDataWithRetry(
   resolvedUrl: string,
-  _cleanHashtag?: string
+  _cleanHashtag?: string,
+  opts: { deadline?: number } = {}
 ): Promise<VideoItem> {
+  // Tanpa deadline (mis. dipanggil dari demo) → anggap ada waktu 45 dtk.
+  const deadline = opts.deadline ?? Date.now() + 45_000;
   let result: VideoItem | null = null;
   for (let attempt = 1; attempt <= 4; attempt++) {
     await tikwmGate();
     result = await fetchTikTokDataOnce(resolvedUrl);
     if (result.status !== "error" || !isTransientTikwmError(result.errorMessage || "")) return result;
-    await sleep(1500 * attempt);
+    const wait = 1500 * attempt;
+    // Tidak cukup waktu untuk coba lagi (jeda + 1 request) → berhenti, biar fungsi Vercel tidak timeout.
+    if (Date.now() + wait + TIKWM_TIMEOUT_MS > deadline) break;
+    await sleep(wait);
   }
   return result as VideoItem;
 }
+
+/** Batas tunggu 1 request ke TikWM; kalau lewat dianggap gangguan sesaat (boleh dicoba lagi). */
+const TIKWM_TIMEOUT_MS = 9000;
 
 async function fetchTikTokDataOnce(resolvedUrl: string): Promise<VideoItem> {
   const videoId = extractTikTokVideoId(resolvedUrl);
@@ -59,6 +68,7 @@ async function fetchTikTokDataOnce(resolvedUrl: string): Promise<VideoItem> {
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
       },
       cache: "no-store",
+      signal: AbortSignal.timeout(TIKWM_TIMEOUT_MS),
     });
 
     if (!res.ok) {

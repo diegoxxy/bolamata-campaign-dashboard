@@ -27,9 +27,16 @@ function parseUrlsFromText(text: string): string[] {
 const LAST_HASHTAG_KEY = "tiktok_analytics_last_hashtag";
 
 /** Kunci semua link/video yang sudah diproses (ID video + link input aslinya). */
+/** Video yang gagal dibaca (error / 0 views dengan pesan error) → belum dianggap selesai, ikut di-scan ulang. */
+function isFailedVideo(v: VideoItem): boolean {
+  return v.status === "error" || (!!v.errorMessage && (v.views || 0) === 0);
+}
+
+/** Kunci link yang SUDAH berhasil di-scan. Link yang gagal tidak masuk, jadi klik Verifikasi lagi = scan ulang yang gagal. */
 function scannedKeySet(videos: VideoItem[]): Set<string> {
   const keys = new Set<string>();
   for (const v of videos) {
+    if (isFailedVideo(v)) continue;
     keys.add(videoKey(v));
     if (v.sourceUrl) keys.add(inputUrlKey(v.sourceUrl));
   }
@@ -170,7 +177,7 @@ export default function Home() {
     const urls = hashtagChanged ? allUrls : allUrls.filter((u) => !doneKeys.has(inputUrlKey(u)));
 
     if (urls.length === 0) {
-      showToast("Semua link sudah diproses, tidak ada link baru untuk ditambahkan.");
+      showToast("Semua link sudah berhasil di-scan, tidak ada link baru atau gagal.");
       return;
     }
 
@@ -181,17 +188,18 @@ export default function Home() {
       localStorage.setItem(LAST_HASHTAG_KEY, cleanHashtag);
     } catch {}
 
-    const chunks = chunkArray(urls, 5);
     const toCache: { sourceUrl: string; video: VideoItem } [] = [];
     const collectedVideos: VideoItem[] = [];
 
-    setProgress({ done: 0, total: urls.length });
+    const runPass = async (passUrls: string[], chunkSize: number, gapMs: number) => {
+    const chunks = chunkArray(passUrls, chunkSize);
+    setProgress({ done: 0, total: passUrls.length });
 
     for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
       const chunk = chunks[chunkIndex];
 
       if (chunkIndex > 0) {
-        await delay(1500);
+        await delay(gapMs);
       }
 
       try {
@@ -239,6 +247,27 @@ export default function Home() {
         prev ? { ...prev, done: Math.min(prev.total, prev.done + chunk.length) } : null
       );
     }
+    };
+
+    // Putaran 1: semua link
+    await runPass(urls, 5, 1500);
+
+    // Putaran 2 (otomatis): link TikTok yang gagal (limit TikWM / batch timeout / server sibuk)
+    // di-scan ulang dengan batch kecil & jeda lebih panjang. Hasil sukses menggantikan yang gagal.
+    const succeeded = scannedKeySet(collectedVideos);
+    const retryUrls = Array.from(
+      new Set(
+        collectedVideos
+          .filter((v) => isFailedVideo(v) && /tiktok\.com/i.test(v.sourceUrl))
+          .map((v) => v.sourceUrl)
+          .filter((u) => !succeeded.has(inputUrlKey(u)))
+      )
+    );
+    if (retryUrls.length > 0) {
+      showToast(`${retryUrls.length} link TikTok gagal di putaran pertama, dicoba ulang otomatis…`);
+      await delay(3000);
+      await runPass(retryUrls, 2, 2500);
+    }
 
     if (toCache.length > 0) {
       await setManyInCache(toCache);
@@ -247,12 +276,17 @@ export default function Home() {
     // Short link baru ketahuan ID videonya setelah di-resolve server, jadi kembarannya dibuang di sini.
     const merged = [...baseVideos, ...collectedVideos];
     const uniqueVideos = dedupeVideos(merged);
-    const duplicateCount = merged.length - uniqueVideos.length;
+    // Kembar = link BERBEDA yang ternyata video yang sama (bukan link yang di-scan ulang).
+    const distinctLinks = new Set(merged.map((v) => inputUrlKey(v.sourceUrl))).size;
+    const duplicateCount = Math.max(0, distinctLinks - uniqueVideos.length);
+    const stillFailed = uniqueVideos.filter(isFailedVideo).length;
     localStorage.setItem("tiktok_analytics_last_scan", JSON.stringify(uniqueVideos));
     if (duplicateCount > 0) {
       showToast(`${duplicateCount} link kembar (video yang sama) dibuang, sisa ${uniqueVideos.length} video unik.`);
+    } else if (stillFailed > 0) {
+      showToast(`${stillFailed} link masih gagal dibaca — klik tombol scan lagi untuk mencoba ulang yang gagal.`);
     } else if (baseVideos.length > 0) {
-      showToast(`${uniqueVideos.length - baseVideos.length} video baru ditambahkan, total ${uniqueVideos.length} video.`);
+      showToast(`Selesai, total ${uniqueVideos.length} video.`);
     }
 
     setLoading(false);

@@ -62,6 +62,7 @@ async function resolveTikTokUrl(url: string): Promise<string> {
         for (let hop = 0; hop < 4; hop++) {
           const res = await fetch(current, {
             redirect: "manual",
+            signal: AbortSignal.timeout(6000),
             cache: "no-store",
             headers: {
               "User-Agent":
@@ -86,6 +87,7 @@ async function resolveTikTokUrl(url: string): Promise<string> {
       const response = await fetch(trimmedUrl, {
         method: "GET",
         redirect: "follow",
+        signal: AbortSignal.timeout(8000),
         cache: "no-store",
         headers: {
           "User-Agent":
@@ -111,6 +113,34 @@ async function resolveTikTokUrl(url: string): Promise<string> {
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/** Waktu maksimal 1 batch (di bawah maxDuration 60 dtk, sisakan ruang untuk kirim respons). */
+const BATCH_BUDGET_MS = 50_000;
+
+function timeoutVideo(sourceUrl: string): VideoItem {
+  const isYouTube = /youtube\.com|youtu\.be/i.test(sourceUrl);
+  const isInstagram = /instagram\.com/i.test(sourceUrl);
+  return {
+    id: sourceUrl,
+    platform: isYouTube ? "youtube" : isInstagram ? "instagram" : "tiktok",
+    sourceUrl,
+    videoUrl: sourceUrl,
+    title: "Belum sempat di-scan (server sibuk)",
+    authorName: "unknown",
+    authorDisplayName: "Unknown / Error",
+    authorUrl: "",
+    authorAvatar: "",
+    coverUrl: "",
+    views: 0,
+    likes: 0,
+    comments: 0,
+    shares: 0,
+    saves: 0,
+    postedAt: "-",
+    status: "error",
+    errorMessage: "Waktu batch habis (limit TikWM) — klik Verifikasi lagi untuk scan ulang link ini.",
+  };
+}
+
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as VideoBatchRequest;
@@ -133,10 +163,18 @@ export async function POST(request: Request) {
 
     const cleanHashtag = targetHashtag.toLowerCase().replace("#", "").trim();
     const videos: VideoItem[] = [];
+    // Batas waktu batch: jangan sampai melewati maxDuration Vercel (FUNCTION_INVOCATION_TIMEOUT).
+    // Link yang belum sempat diproses ditandai error "waktu habis" → klik Verifikasi lagi untuk scan ulang.
+    const deadline = Date.now() + BATCH_BUDGET_MS;
 
     for (let i = 0; i < videoUrls.length; i++) {
       const originalInputUrl = videoUrls[i].trim();
       if (!originalInputUrl) continue;
+
+      if (Date.now() > deadline - 6000) {
+        videos.push(timeoutVideo(originalInputUrl));
+        continue;
+      }
 
       const isYouTube =
         originalInputUrl.includes("youtube.com") || originalInputUrl.includes("youtu.be");
@@ -162,7 +200,7 @@ export async function POST(request: Request) {
             }
           } else {
             const resolvedUrl = await resolveTikTokUrl(originalInputUrl);
-            videoData = await fetchTikTokDataWithRetry(resolvedUrl, cleanHashtag);
+            videoData = await fetchTikTokDataWithRetry(resolvedUrl, cleanHashtag, { deadline });
 
             if (videoData) {
               videoData.platform = "tiktok";
@@ -217,8 +255,9 @@ export async function POST(request: Request) {
         videos.push(videoData);
       }
 
-      if (i < videoUrls.length - 1) {
-        await delay(1250);
+      // Jeda antar link cuma untuk YouTube/Instagram; TikTok sudah diatur antrean TikWM.
+      if (i < videoUrls.length - 1 && (isYouTube || isInstagram)) {
+        await delay(800);
       }
     }
 

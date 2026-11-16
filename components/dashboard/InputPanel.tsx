@@ -179,7 +179,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
             {rawUrls.split("\n").filter((l) => l.trim()).length} link terdeteksi
             {props.newLinkCount != null && (
               <span className={props.newLinkCount > 0 ? "text-cyan-400" : undefined}>
-                {" "}· {props.newLinkCount} link baru
+                {" "}· {props.newLinkCount} link baru / gagal
               </span>
             )}
           </p>
@@ -206,8 +206,8 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
           ? "Memproses Data Real-Time..."
           : props.newLinkCount != null
             ? props.newLinkCount > 0
-              ? `Tambahkan ${props.newLinkCount} Link Baru ke Hasil`
-              : "Tidak Ada Link Baru"
+              ? `Scan ${props.newLinkCount} Link Baru / Gagal`
+              : "Semua Link Sudah Ter-scan"
             : "Verifikasi & Kelompokkan Per Username"}
       </motion.button>
     </div>

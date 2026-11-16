@@ -51,6 +51,7 @@ export async function fetchYouTubeData(
   try {
     const invidiousRes = await fetch(`https://inv.tux.pizza/api/v1/videos/${videoId}`, {
       cache: "no-store",
+      signal: AbortSignal.timeout(5000), // Invidious sering lambat → cepat pindah ke cadangan
       headers: { "User-Agent": "Mozilla/5.0" },
     });
 
@@ -92,7 +93,7 @@ export async function fetchYouTubeData(
   // 2. Fallback: oEmbed + Direct HTML Scraper Meta Tags
   try {
     const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(resolvedUrl)}&format=json`;
-    const res = await fetch(oembedUrl, { cache: "no-store" });
+    const res = await fetch(oembedUrl, { cache: "no-store", signal: AbortSignal.timeout(8000) });
 
     if (!res.ok) {
       return makeErrorVideo(resolvedUrl, "Video tidak ditemukan atau private");
@@ -108,6 +109,7 @@ export async function fetchYouTubeData(
 
     try {
       const pageRes = await fetch(embedUrl, {
+        signal: AbortSignal.timeout(8000),
         headers: {
           "User-Agent":
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
