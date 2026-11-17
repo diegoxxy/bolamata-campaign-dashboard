@@ -15,7 +15,9 @@ import {
   Bookmark,
   AlertTriangle,
   ChevronRight,
+  RefreshCw,
 } from "lucide-react";
+import { isFailedVideo } from "@/lib/social/dedupe";
 import type { CreatorGroup, VideoItem } from "@/lib/social/types";
 import StatusBadge from "./StatusBadge";
 import {
@@ -34,6 +36,9 @@ interface FolderViewProps {
   creators: CreatorGroup[];
   onUpdateVideo?: (updatedVideo: VideoItem) => void;
   readOnly?: boolean;
+  /** Scan ulang 1 video yang gagal. */
+  onRescanVideo?: (v: VideoItem) => void;
+  rescanning?: boolean;
 }
 
 const ENGAGE_META = [
@@ -45,7 +50,13 @@ const ENGAGE_META = [
 
 const fmt = (n: number) => (n || 0).toLocaleString("id-ID");
 
-export default function FolderView({ creators, onUpdateVideo, readOnly = false }: FolderViewProps) {
+export default function FolderView({
+  creators,
+  onUpdateVideo,
+  readOnly = false,
+  onRescanVideo,
+  rescanning = false,
+}: FolderViewProps) {
   const [selectedAuthorName, setSelectedAuthorName] = useState<string | null>(null);
   const [editingVideo, setEditingVideo] = useState<VideoItem | null>(null);
 
@@ -239,6 +250,17 @@ export default function FolderView({ creators, onUpdateVideo, readOnly = false }
                   >
                     Buka Link Asli <ExternalLink className="w-4 h-4" />
                   </a>
+                  {!readOnly && onRescanVideo && isFailedVideo(v) && (
+                    <motion.button
+                      {...pressable}
+                      disabled={rescanning}
+                      onClick={() => onRescanVideo(v)}
+                      title="Scan ulang link ini"
+                      className="inline-flex items-center gap-1.5 px-3 py-2 bg-cyan-600/15 hover:bg-cyan-600/25 disabled:opacity-50 disabled:cursor-not-allowed text-cyan-300 border border-cyan-600/30 rounded-lg text-sm font-semibold transition-colors cursor-pointer"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${rescanning ? "animate-spin" : ""}`} /> Scan Ulang
+                    </motion.button>
+                  )}
                   {!readOnly && (
                     <motion.button
                       {...pressable}

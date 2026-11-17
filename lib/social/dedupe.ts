@@ -85,3 +85,24 @@ export function dedupeInputUrls(urls: string[]): string[] {
   }
   return out;
 }
+
+/** Video yang gagal dibaca (error / 0 views dengan pesan error) → belum dianggap selesai, boleh di-scan ulang. */
+export function isFailedVideo(v: VideoItem): boolean {
+  return v.status === "error" || (!!v.errorMessage && (v.views || 0) === 0);
+}
+
+/**
+ * Gabungkan hasil scan baru ke daftar lama.
+ * Kartu gagal lama untuk link yang sama diganti hasil baru (termasuk short link yang
+ * kuncinya berubah setelah di-resolve), dan hasil gagal baru tidak menimpa yang sudah sukses.
+ */
+export function mergeScanResults(prev: VideoItem[], incoming: VideoItem[]): VideoItem[] {
+  const incomingKeys = new Set(incoming.map((v) => inputUrlKey(v.sourceUrl)));
+  const okKeys = new Set<string>();
+  for (const v of prev) {
+    if (!isFailedVideo(v)) okKeys.add(inputUrlKey(v.sourceUrl));
+  }
+  const kept = prev.filter((v) => !(isFailedVideo(v) && incomingKeys.has(inputUrlKey(v.sourceUrl))));
+  const fresh = incoming.filter((v) => !(isFailedVideo(v) && okKeys.has(inputUrlKey(v.sourceUrl))));
+  return dedupeVideos([...kept, ...fresh]);
+}

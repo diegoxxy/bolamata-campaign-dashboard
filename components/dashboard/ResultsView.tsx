@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, RefreshCw, Loader2 } from "lucide-react";
 import type {
   CreatorSortKey,
   StatusFilter,
@@ -14,7 +14,7 @@ import { exportResultToExcel } from "@/lib/social/exportExcel";
 import { exportResultToPdf } from "@/lib/social/exportPdf";
 import { computeGlobalMetrics, groupVideosByCreator } from "@/lib/social/aggregate";
 import { filterVideos, sortCreators, sortVideos } from "@/lib/social/filterSort";
-import { dedupeVideos } from "@/lib/social/dedupe";
+import { dedupeVideos, isFailedVideo } from "@/lib/social/dedupe";
 
 import KpiRibbon from "./KpiRibbon";
 import Toolbar from "./Toolbar";
@@ -27,6 +27,9 @@ interface ResultsViewProps {
   allVideos: VideoItem[];
   readOnly?: boolean;
   onUpdateVideo?: (v: VideoItem) => void;
+  /** Scan ulang link tertentu (tombol "Scan Ulang"); tidak ada di halaman share. */
+  onRescan?: (urls: string[]) => void;
+  rescanning?: boolean;
 }
 
 export default function ResultsView({
@@ -34,6 +37,8 @@ export default function ResultsView({
   allVideos: rawVideos,
   readOnly = false,
   onUpdateVideo,
+  onRescan,
+  rescanning = false,
 }: ResultsViewProps) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
@@ -45,6 +50,11 @@ export default function ResultsView({
   // Video kembar (ID sama) tidak boleh dihitung dua kali di KPI, per kreator, maupun export.
   const allVideos = useMemo(() => dedupeVideos(rawVideos), [rawVideos]);
   const globalMetrics = useMemo(() => computeGlobalMetrics(allVideos), [allVideos]);
+  const failedUrls = useMemo(
+    () => allVideos.filter(isFailedVideo).map((v) => v.sourceUrl).filter(Boolean),
+    [allVideos]
+  );
+  const canRescan = !readOnly && !!onRescan;
 
   const filters = useMemo(
     () => ({
@@ -137,6 +147,19 @@ export default function ResultsView({
                   privat, atau terkena proteksi scraping. Klik link asli untuk cek manual jika diperlukan.
                 </div>
               </div>
+              {canRescan && failedUrls.length > 0 && (
+                <motion.button
+                  whileHover={rescanning ? undefined : { y: -1 }}
+                  whileTap={rescanning ? undefined : { scale: 0.97 }}
+                  type="button"
+                  disabled={rescanning}
+                  onClick={() => onRescan?.(failedUrls)}
+                  className="flex-shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 bg-amber-500/90 hover:bg-amber-400 disabled:bg-slate-700 disabled:text-fg-subtle disabled:cursor-not-allowed text-amber-950 rounded-lg text-sm font-bold transition-colors cursor-pointer"
+                >
+                  {rescanning ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                  {rescanning ? "Sedang scan…" : `Scan Ulang ${failedUrls.length} Link Gagal`}
+                </motion.button>
+              )}
             </div>
           </motion.div>
         )}
@@ -176,6 +199,8 @@ export default function ResultsView({
               creators={creatorsForFolder}
               onUpdateVideo={onUpdateVideo}
               readOnly={readOnly}
+              onRescanVideo={canRescan ? (v) => onRescan?.([v.sourceUrl]) : undefined}
+              rescanning={rescanning}
             />
           </motion.div>
         ) : (

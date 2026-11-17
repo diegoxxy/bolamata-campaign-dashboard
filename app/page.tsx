@@ -6,7 +6,14 @@ import { motion, AnimatePresence } from "motion/react";
 import { FolderSearch, RotateCcw, Share2, Loader2 } from "lucide-react";
 import type { VideoBatchResponse, VideoItem } from "@/lib/social/types";
 import { chunkArray } from "@/lib/social/chunk";
-import { dedupeInputUrls, dedupeVideos, inputUrlKey, videoKey } from "@/lib/social/dedupe";
+import {
+  dedupeInputUrls,
+  dedupeVideos,
+  inputUrlKey,
+  isFailedVideo,
+  mergeScanResults,
+  videoKey,
+} from "@/lib/social/dedupe";
 import { setManyInCache } from "@/lib/social/cache";
 import { fetchInstagramDataClient } from "@/lib/social/client/fetchInstagramClient";
 
@@ -25,12 +32,6 @@ function parseUrlsFromText(text: string): string[] {
 }
 
 const LAST_HASHTAG_KEY = "tiktok_analytics_last_hashtag";
-
-/** Kunci semua link/video yang sudah diproses (ID video + link input aslinya). */
-/** Video yang gagal dibaca (error / 0 views dengan pesan error) → belum dianggap selesai, ikut di-scan ulang. */
-function isFailedVideo(v: VideoItem): boolean {
-  return v.status === "error" || (!!v.errorMessage && (v.views || 0) === 0);
-}
 
 /** Kunci link yang SUDAH berhasil di-scan. Link yang gagal tidak masuk, jadi klik Verifikasi lagi = scan ulang yang gagal. */
 function scannedKeySet(videos: VideoItem[]): Set<string> {
@@ -181,6 +182,24 @@ export default function Home() {
       return;
     }
 
+    await runScan(urls, cleanHashtag, baseVideos, hashtagChanged);
+  }
+
+  /** Scan ulang link tertentu (yang gagal) tanpa perlu isi kolom link lagi. */
+  async function handleRescan(urls: string[]) {
+    if (loading) return;
+    const tag = (lastScanHashtag || targetHashtag.replace(/^#/, "").trim().toLowerCase()).trim();
+    if (!tag) {
+      showToast("Isi hashtag kampanye dulu sebelum scan ulang.", "error");
+      return;
+    }
+    const unique = dedupeInputUrls(urls);
+    if (unique.length === 0) return;
+    showToast(`Scan ulang ${unique.length} link…`);
+    await runScan(unique, tag, allVideos, false);
+  }
+
+  async function runScan(urls: string[], cleanHashtag: string, baseVideos: VideoItem[], hashtagChanged: boolean) {
     setLoading(true);
     if (hashtagChanged) setAllVideos([]);
     setLastScanHashtag(cleanHashtag);
@@ -221,7 +240,7 @@ export default function Home() {
             data.videos.map((v: VideoItem) => enrichInstagramVideo(v, cleanHashtag))
           );
 
-          setAllVideos((prev) => dedupeVideos([...prev, ...processedVideos]));
+          setAllVideos((prev) => mergeScanResults(prev, processedVideos));
           collectedVideos.push(...processedVideos);
           toCache.push(
             ...processedVideos.map((v: VideoItem) => ({ sourceUrl: v.sourceUrl, video: v }))
@@ -237,7 +256,7 @@ export default function Home() {
           })
         );
 
-        setAllVideos((prev) => dedupeVideos([...prev, ...errored]));
+        setAllVideos((prev) => mergeScanResults(prev, errored));
         collectedVideos.push(...errored);
         toCache.push(
           ...errored.map((v: VideoItem) => ({ sourceUrl: v.sourceUrl, video: v }))
@@ -279,16 +298,18 @@ export default function Home() {
 
     // Short link baru ketahuan ID videonya setelah di-resolve server, jadi kembarannya dibuang di sini.
     const merged = [...baseVideos, ...collectedVideos];
-    const uniqueVideos = dedupeVideos(merged);
+    // Urut sesuai kedatangan: hasil sukses putaran 2 menggantikan kartu gagal putaran 1.
+    const uniqueVideos = collectedVideos.reduce((acc, v) => mergeScanResults(acc, [v]), baseVideos);
     // Kembar = link BERBEDA yang ternyata video yang sama (bukan link yang di-scan ulang).
     const distinctLinks = new Set(merged.map((v) => inputUrlKey(v.sourceUrl))).size;
     const duplicateCount = Math.max(0, distinctLinks - uniqueVideos.length);
     const stillFailed = uniqueVideos.filter(isFailedVideo).length;
+    setAllVideos(uniqueVideos);
     localStorage.setItem("tiktok_analytics_last_scan", JSON.stringify(uniqueVideos));
     if (duplicateCount > 0) {
       showToast(`${duplicateCount} link kembar (video yang sama) dibuang, sisa ${uniqueVideos.length} video unik.`);
     } else if (stillFailed > 0) {
-      showToast(`${stillFailed} link masih gagal dibaca — klik tombol scan lagi untuk mencoba ulang yang gagal.`);
+      showToast(`${stillFailed} link masih gagal dibaca — klik "Scan Ulang yang Gagal" untuk mencoba lagi.`);
     } else if (baseVideos.length > 0) {
       showToast(`Selesai, total ${uniqueVideos.length} video.`);
     }
@@ -470,7 +491,13 @@ export default function Home() {
               transition={{ duration: 0.4, ease: EASE_OUT }}
               className="space-y-5"
             >
-              <ResultsView hashtag={targetHashtag} allVideos={allVideos} onUpdateVideo={handleUpdateVideo} />
+              <ResultsView
+                hashtag={targetHashtag}
+                allVideos={allVideos}
+                onUpdateVideo={handleUpdateVideo}
+                onRescan={handleRescan}
+                rescanning={loading}
+              />
             </motion.div>
           ) : (
             !loading && (
